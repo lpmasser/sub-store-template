@@ -1,0 +1,16 @@
+{
+  "version": 4,
+  "rules": [
+    {
+      "domain": [
+        "getsd.91shenfan.com",
+        "api.privateapi.xyz",
+        "wximg.wxs.qq.com",
+        "dcg.microsoft.com",
+        "talkgo.net",
+        "elysia.h-e.top",
+        "eloyzh.de"
+      ]
+    }
+  ]
+}

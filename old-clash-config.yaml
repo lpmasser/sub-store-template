@@ -1,0 +1,189 @@
+# 机场订阅，名称不能重复
+proxy-providers:
+  sub-store:
+    type: http
+    interval: 1800
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 300
+    proxy: DIRECT
+    url: "http://1.94.134.144:3001/kug8JpZZ62x251fvMrne/download/collection/mihomo-final?target=ClashMeta"
+# 用于下载订阅时指定UA
+global-ua: clash
+    
+# 全局配置 
+port: 7890
+socks-port: 7891
+redir-port: 7892
+mixed-port: 7893
+tproxy-port: 7894
+allow-lan: true
+bind-address: "*"
+ipv6: false
+unified-delay: true
+tcp-concurrent: true
+log-level: warning
+find-process-mode: 'off'
+# interface-name: en0
+global-client-fingerprint: chrome
+keep-alive-idle: 600
+keep-alive-interval: 15
+disable-keep-alive: false
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+# 控制面板，external-ui 路径如果出现报错，根据你使用的插件进行调整，比如openclash改为： /etc/openclash/run/ui  ，裸核跑改为/etc/mihomo/run/ui
+# 因容易造成新手面板启动问题，我注释掉了，需要的自行开启
+#external-controller: 0.0.0.0:9090
+#secret: ""
+#external-ui: "/etc/nikki/run/ui"
+#external-ui-name: zashboard
+#external-ui-url: "https://github.com/Zephyruso/zashboard/archive/refs/heads/gh-pages.zip"
+
+# 嗅探
+sniffer:
+  enable: true
+  sniff:
+    HTTP:
+      ports: [80, 8080-8880]
+      override-destination: true
+    TLS:
+      ports: [443, 8443]
+    QUIC:
+      ports: [443, 8443]
+  force-domain:
+    - "+.v2ex.com"
+  skip-domain:
+    - "+.baidu.com"
+
+# 入站  
+tun:
+  enable: true
+  # system/gvisor/mixed
+  stack: mixed
+  dns-hijack: ["any:53", "tcp://any:53"]
+  auto-route: true
+  auto-redirect: true
+  auto-detect-interface: true
+
+# DNS模块
+dns:
+  enable: true
+  listen: 0.0.0.0:1053
+  ipv6: false
+  respect-rules: true
+  enhanced-mode: fake-ip
+  fake-ip-range: 28.0.0.1/8
+  fake-ip-filter-mode: blacklist
+  fake-ip-filter:
+    - "rule-set:private_domain,cn_domain"
+    - "+.msftconnecttest.com"
+    - "+.msftncsi.com"
+    - "time.*.com"
+    - "+.market.xiaomi.com"
+  default-nameserver:
+    - 223.5.5.5
+  proxy-server-nameserver:
+    - https://223.5.5.5/dns-query
+  # namesever尽量用运营商提供的DNS
+  nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+ 
+# 锚点
+pr: &pr {type: select, proxies: [🚀 节点选择, ♻️ 自建VPS, ♻️ 公益VPS, ♻️ 香港自动, ♻️ 日本自动, ♻️ 美国自动, ♻️ 狮城自动, 🌐 全部节点, 🌐 高倍专线, DIRECT, REJECT]}
+usa: &usa {type: select, proxies: [♻️ 美国自动, ♻️ 自建VPS, ♻️ 公益VPS, 🚀 节点选择, ♻️ 香港自动, ♻️ 日本自动, ♻️ 狮城自动, 🌐 全部节点, 🌐 高倍专线, DIRECT, REJECT]}
+unlock: &unlock {type: select, proxies: [♻️ 自建VPS, ♻️ 公益VPS, 🚀 节点选择, ♻️ 香港自动, ♻️ 日本自动, ♻️ 美国自动, ♻️ 狮城自动, 🌐 全部节点, 🌐 高倍专线, DIRECT, REJECT]}
+download: &download {type: select, proxies: [♻️ 公益VPS, ♻️ 自建VPS, 🚀 节点选择, ♻️ 香港自动, ♻️ 日本自动, ♻️ 美国自动, ♻️ 狮城自动, 🌐 全部节点, 🌐 高倍专线, DIRECT, REJECT]}
+# 策略组
+proxy-groups:
+  - {name: 🚀 节点选择, type: select, proxies: [♻️ 自动选择, ♻️ 自建VPS, ♻️ 公益VPS, ♻️ 香港自动, ♻️ 日本自动, ♻️ 美国自动, 🌐 全部节点, 🌐 高倍专线, DIRECT, REJECT]}
+  - {name: ♻️ 自动选择, type: url-test, include-all: true, tolerance: 20, interval: 300, filter: "(?=.*(IPLC))^((?!(E|F|套餐|奈飛|流媒體)).)*$"}
+  - {name: 🤖 AI, <<: *unlock, include-all: true, filter: "(?i)ChatGPT|openai|自建"}
+  - {name: 🍀 Google, <<: *unlock}
+  - {name: 📹 YouTube, <<: *download}
+  - {name: 🎥 NETFLIX, <<: *unlock, include-all: true, filter: "(?i:NETFLIX)|奈飛|buyvm|视频"}
+  - {name: 🎶 Spotify, <<: *usa, include-all: true, filter: "(?i)buyvm"}
+  - {name: 👨🏿‍💻 GitHub, <<: *pr}
+  - {name: 🪟 Microsoft, <<: *pr}
+  - {name: 💶 PayPal, <<: *pr}
+  - {name: 📲 Telegram, <<: *pr}
+  - {name: 🎵 TikTok, <<: *pr}
+  - {name: 🐬 OneDrive, <<: *pr}
+  - {name: ✈️ Speedtest, <<: *pr}
+  - {name: 🎯 全球直连, type: select, proxies: [DIRECT, 🚀 节点选择, REJECT]}
+  - {name: 🐟 漏网之鱼, <<: *pr}
+  - {name: ♻️ 自建VPS, type: fallback, include-all: true, interval: 300, filter: "(?=.*(自建))"}
+  - {name: ♻️ 公益VPS, type: url-test, include-all: true, tolerance: 20, interval: 300, filter: "(?=.*(linuxdo))"}
+  - {name: ♻️ 美国自动, type: fallback, include-all: true, interval: 300, filter: "(?=.*(美|US|(?i)States|America))^((?!(E|F|港|台|日|韩|新|遊戲專線|视频專線)).)*$"}
+  - {name: ♻️ 香港自动, type: fallback, include-all: true, interval: 300, filter: "(?=.*(港|HK|(?i)Hong))^((?!(E|F|台|日|韩|新|深|美|遊戲專線|视频專線)).)*$"}
+  - {name: ♻️ 日本自动, type: fallback, include-all: true, interval: 300, filter: "(?=.*(日|JP|(?i)Japan))^((?!(E|F|港|台|韩|新|美|遊戲專線|视频專線)).)*$" }
+  - {name: ♻️ 狮城自动, type: fallback, include-all: true, interval: 300, filter: "(?=.*(狮|SG|(?i)Singapore))^((?!(E|F|港|台|韩|新|美|遊戲專線|视频專線)).)*$" }
+  - {name: 🌐 高倍专线, type: select, include-all: true, filter: "(?=.*(遊戲專線|视频專線))" }
+  - {name: 🌐 全部节点, type: select, include-all: true}
+rules:
+  - RULE-SET,direct_domain,DIRECT,no-resolve
+  - RULE-SET,adblock,REJECT
+  - RULE-SET,private_domain,DIRECT,no-resolve
+  - RULE-SET,spotify_domain,🎶 Spotify
+  - RULE-SET,openai,🤖 AI
+  - RULE-SET,gemini,🤖 AI
+  - RULE-SET,anthropic,🤖 AI
+  - RULE-SET,xai,🤖 AI
+  - RULE-SET,cursor,🤖 AI
+  - RULE-SET,AI,🤖 AI
+  - RULE-SET,truthsocial,♻️ 美国自动
+  - RULE-SET,github_domain,👨🏿‍💻 GitHub
+  - RULE-SET,youtube_domain,📹 YouTube
+  - RULE-SET,google_domain,🍀 Google
+  - RULE-SET,onedrive_domain,🐬 OneDrive
+  - RULE-SET,microsoft_domain,🪟 Microsoft
+  - RULE-SET,tiktok_domain,🎵 TikTok
+  - RULE-SET,speedtest_domain,✈️ Speedtest
+  - RULE-SET,telegram_domain,📲 Telegram
+  - RULE-SET,netflix_domain,🎥 NETFLIX
+  - RULE-SET,paypal_domain,💶 PayPal
+  - RULE-SET,geolocation-!cn,🚀 节点选择
+  - RULE-SET,cn_domain,🎯 全球直连,no-resolve
+  - RULE-SET,google_ip,🍀 Google,no-resolve
+  - RULE-SET,netflix_ip,🎥 NETFLIX,no-resolve
+  - RULE-SET,telegram_ip,📲 Telegram,no-resolve
+  - RULE-SET,cn_ip,🎯 全球直连,no-resolve
+  - MATCH,🐟 漏网之鱼
+rule-anchor:
+  ip: &ip {type: http, interval: 86400, behavior: ipcidr, format: mrs}
+  domain: &domain {type: http, interval: 86400, behavior: domain, format: mrs}
+  yaml: &yaml {type: http, interval: 86400, behavior: classical, format: yaml}
+  qcy: &qcy {type: http, interval: 86400, behavior: domain, format: text}
+  class: &class {type: http, interval: 86400, behavior: classical, format: text}
+rule-providers: 
+  direct_domain: {!!merge <<: *yaml, url: "https://raw.githubusercontent.com/lpmasser/over-the-wall/refs/heads/master/direct_domain.yaml"}
+  private_domain: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/private.mrs"}
+  adblock: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockmihomo.mrs"}
+  openai: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/openai.mrs"}
+  gemini: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/google-gemini.mrs"}
+  anthropic: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/anthropic.mrs"}
+  xai: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/xai.mrs"}
+  cursor: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/cursor.mrs"}
+  AI: {!!merge <<: *yaml, url: "https://raw.githubusercontent.com/lpmasser/over-the-wall/refs/heads/master/AI.yaml"}
+  truthsocial: {!!merge <<: *yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/TruthSocial/TruthSocial.yaml"}
+  spotify_domain: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/spotify.mrs"}
+  youtube_domain: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/youtube.mrs"}
+  google_domain: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/google.mrs"}
+  github_domain: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/github.mrs"}
+  telegram_domain: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/telegram.mrs"}
+  netflix_domain: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/netflix.mrs"}
+  paypal_domain: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/paypal.mrs"}
+  onedrive_domain: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/onedrive.mrs"}
+  microsoft_domain: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/microsoft.mrs"}
+  speedtest_domain: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/ookla-speedtest.mrs"}
+  tiktok_domain: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/tiktok.mrs"}
+  gfw_domain: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/gfw.mrs"}
+  geolocation-!cn: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/geolocation-!cn.mrs"}
+  cn_domain: {!!merge <<: *domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/cn.mrs"}
+  cn_ip: {!!merge <<: *ip, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/cn.mrs"}
+  google_ip: {!!merge <<: *ip, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/google.mrs"}
+  telegram_ip: {!!merge <<: *ip, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/telegram.mrs"}
+  netflix_ip: {!!merge <<: *ip, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/netflix.mrs"}

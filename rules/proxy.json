@@ -1,0 +1,18 @@
+{
+  "version": 4,
+  "rules": [
+    {
+      "domain_suffix": [
+        "augmentcode.com",
+        "windsurf.com",
+        "codeium.com",
+        "openrouter.ai"
+      ]
+    },
+    {
+      "ip_cidr": [
+        "45.129.8.190/32"
+      ]
+    }
+  ]
+}
