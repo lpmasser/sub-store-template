@@ -1,4 +1,4 @@
-name: Sync and Compile Sing-Box Rules
+name: Compile Sing-Box Rules
 
 on:
   push:
