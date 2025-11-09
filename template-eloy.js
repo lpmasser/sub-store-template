@@ -245,7 +245,7 @@ const APPEND_GROUPS = [
   { tag: '🇸🇬 狮城', pattern: { any: ['狮', 'SG', 'Singapore'], not: [...EX_BASE, '港', '台', '韩', '新', '美'], ci: true } },
   { tag: '🇹🇼 台湾', pattern: { any: ['台', 'TW', 'Taiwan'], not: [...EX_BASE, '港', '日', '韩', '新', '美'], ci: true } },
   { tag: '🇪🇺 欧洲', pattern: { any: [
-      '欧', 'EU', 'Europe', 'UK', { raw: 'United\\s*Kingdom', boundary: true }, 'GB', 'Britain', 'England',
+      '欧', 'EU', 'Europe', 'UK', { raw: 'United\\s*Kingdom', boundary: true }, 'Britain', 'England',
       'DE', 'Germany', 'FR', 'France', 'NL', 'Netherlands', 'IT', 'Italy', 'ES', 'Spain', 'SE', 'Sweden', 'CH', 'Switzerland',
       'AT', 'Austria', 'IE', 'Ireland', 'BE', 'Belgium', 'CZ', 'Czech', 'NO', 'Norway', 'DK', 'Denmark', 'FI', 'Finland',
       'PT', 'Portugal', 'GR', 'Greece', 'HU', 'Hungary', 'RO', 'Romania', 'BG', 'Bulgaria', 'UA', 'Ukraine'
