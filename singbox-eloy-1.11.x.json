@@ -8,7 +8,7 @@
       {"tag": "fakeip", "address": "fakeip"}
     ],
     "rules": [
-      {"rule_set": "geosite-adblock", "action": "predefined", "rcode": "NXDOMAIN"},
+      {"rule_set": "geosite-adblock", "action": "reject"},
       {"clash_mode": "direct", "server": "local"},
       {"clash_mode": "global", "server": "fakeip"},
       {"domain_suffix": ["services.googleapis.cn", "googleapis.cn", "xn--ngstr-lra8j.com"], "server": "foreign"},
