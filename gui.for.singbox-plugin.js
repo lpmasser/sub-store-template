@@ -1055,7 +1055,8 @@ const onReady = async () => {
       overlay: ({ h }) =>
         h('div', { class: 'flex flex-col gap-4 min-w-64 p-4' }, [
           h('Button', { type: 'text', onClick: importLocalConfig }, () => '从文件导入'),
-          h('Button', { type: 'text', onClick: importRemoteConfig }, () => '从URL导入')
+          h('Button', { type: 'text', onClick: importRemoteConfig }, () => '从URL导入'),
+          h('Button', { type: 'text', onClick: importSubstoreConfig }, () => '从SUB导入')
         ])
     }
   })
