@@ -235,8 +235,8 @@ const APPEND_GROUPS = [
 
   // 业务分组
   { tag: '🧠 AI', pattern: { any: ['ChatGPT', 'openai'], ci: true } },
-  { tag: '🎶 Spotify', pattern: { any: ['buyvm'], ci: true } },
-  { tag: '🎥 NETFLIX', pattern: { any: ['NETFLIX', '奈飛', 'buyvm', '视频'], ci: true } },
+  // { tag: '🎶 Spotify', pattern: { any: ['buyvm'], ci: true } },
+  { tag: '🎥 NETFLIX', pattern: { any: ['NETFLIX', '奈飛', '视频'], ci: true } },
 
   // 地区中间层：仅追加匹配节点（自动组已在模板中写入）
   { tag: '🇺🇸 美国', pattern: { any: ['美', 'US', 'States', 'America'], not: [...EX_BASE, '港', '台', '日', '韩', '新'], ci: true } },
