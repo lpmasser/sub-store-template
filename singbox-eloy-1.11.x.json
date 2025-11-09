@@ -1,13 +1,14 @@
 {
   "dns": {
+    "fakeip": {"enabled": true, "inet4_range": "198.18.0.0/15", "inet6_range": "fc00::/18"},
     "servers": [
-      {"tag": "local", "type": "udp", "server": "223.5.5.5"},
-      {"tag": "public", "type": "https", "server": "dns.alidns.com", "domain_resolver": "local"},
-      {"tag": "foreign", "type": "https", "server": "8.8.8.8", "detour": "🚀 默认代理"},
-      {"tag": "fakeip", "type": "fakeip", "inet4_range": "198.18.0.0/15", "inet6_range": "fc00::/18"}
+      {"tag": "local", "address": "223.5.5.5"},
+      {"tag": "public", "address": "https://dns.alidns.com/dns-query", "address_resolver": "local"},
+      {"tag": "foreign", "address": "https://8.8.8.8/dns-query", "detour": "🚀 默认代理"},
+      {"tag": "fakeip", "address": "fakeip"}
     ],
     "rules": [
-      { "rule_set": "geosite-adblock", "action": "predefined", "rcode": "NXDOMAIN" },
+      {"rule_set": "geosite-adblock", "action": "predefined", "rcode": "NXDOMAIN"},
       {"clash_mode": "direct", "server": "local"},
       {"clash_mode": "global", "server": "fakeip"},
       {"domain_suffix": ["services.googleapis.cn", "googleapis.cn", "xn--ngstr-lra8j.com"], "server": "foreign"},
@@ -117,8 +118,7 @@
       {"tag": "geoip-cn", "type": "remote", "format": "binary", "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/cn.srs", "download_detour": "🎯 直连"}
     ],
     "final": "🐟 漏网之鱼",
-    "auto_detect_interface": true,
-    "default_domain_resolver": {"server": "public"}
+    "auto_detect_interface": true
   },
   "inbounds": [
     {
@@ -140,7 +140,8 @@
   ],
   "experimental": {
     "cache_file": {
-      "enabled": true
+      "enabled": true,
+      "store_fakeip": true
     },
     "clash_api": {
       "secret": "",
