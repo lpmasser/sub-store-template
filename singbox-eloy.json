@@ -7,15 +7,12 @@
       {"tag": "fakeip", "type": "fakeip", "inet4_range": "198.18.0.0/15", "inet6_range": "fc00::/18"}
     ],
     "rules": [
-      { "rule_set": "geosite-adblock-dns", "action": "predefined", "rcode": "NXDOMAIN" },
+      { "rule_set": "geosite-adblock", "action": "predefined", "rcode": "NXDOMAIN" },
       {"clash_mode": "direct", "server": "local"},
       {"clash_mode": "global", "server": "fakeip"},
       {"domain_suffix": ["services.googleapis.cn", "googleapis.cn", "xn--ngstr-lra8j.com"], "server": "foreign"},
       {"rule_set": ["geosite-cn", "geosite-steamcn", "geosite-apple"], "server": "local"},
       {"query_type": ["A", "AAAA"], "server": "fakeip", "rewrite_ttl": 1}
-    ],
-    "rule_set": [
-      {"tag": "geosite-adblock-dns", "type": "remote", "format": "binary", "url": "https://gh-proxy.com/https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblocksingbox.srs", "download_detour": "🎯 直连"}
     ],
     "final": "foreign",
     "strategy": "ipv4_only",
@@ -24,12 +21,12 @@
   },
   "outbounds": [
     {"tag": "🚀 默认代理", "type": "selector", "outbounds": ["♻️ 自动选择", "♻️ 自建VPS", "♻️ 香港自动", "♻️ 台湾自动", "♻️ 日本自动", "♻️ 美国自动", "♻️ 狮城自动", "♻️ 欧洲自动", "🌐 全部节点", "🎯 直连"]},
-    {"tag": "🧠 AI", "type": "selector", "outbounds": ["🚀 默认代理", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲"]},
+    {"tag": "🧠 AI", "type": "selector", "outbounds": ["🚀 默认代理", "♻️ 自建VPS", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲"]},
     {"tag": "🧩 代理补充", "type": "selector", "outbounds": ["♻️ 自动选择", "♻️ 自建VPS", "♻️ 香港自动", "♻️ 台湾自动", "♻️ 日本自动", "♻️ 美国自动", "♻️ 狮城自动", "♻️ 欧洲自动", "🌐 全部节点", "🎯 直连"]},
     {"tag": "🍀 Google", "type": "selector", "outbounds": ["🚀 默认代理", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲", "🧩 代理补充"]},
     {"tag": "📹 YouTube", "type": "selector", "outbounds": ["🚀 默认代理", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲", "🧩 代理补充"]},
     {"tag": "🎥 NETFLIX", "type": "selector", "outbounds": ["🚀 默认代理", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲", "🧩 代理补充"]},
-    {"tag": "🍏 Apple", "type": "selector", "outbounds": ["🚀 默认代理", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲", "🧩 代理补充"]},
+    {"tag": "🍏 Apple", "type": "selector", "outbounds": ["🚀 默认代理", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲", "🧩 代理补充", "🎯 直连"], "default":"🎯 直连"},
     {"tag": "🎶 Spotify", "type": "selector", "outbounds": ["🚀 默认代理", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲", "🧩 代理补充"]},
     {"tag": "👨🏿‍💻 GitHub", "type": "selector", "outbounds": ["🚀 默认代理", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲", "🧩 代理补充"]},
     {"tag": "🪟 Microsoft", "type": "selector", "outbounds": ["🚀 默认代理", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲", "🧩 代理补充"]},
@@ -53,7 +50,8 @@
     {"tag": "♻️ 日本自动", "type": "urltest", "outbounds": [], "url": "https://www.gstatic.com/generate_204", "interval": "5m", "tolerance": 50},
     {"tag": "♻️ 狮城自动", "type": "urltest", "outbounds": [], "url": "https://www.gstatic.com/generate_204", "interval": "5m", "tolerance": 50},
     {"tag": "♻️ 欧洲自动", "type": "urltest", "outbounds": [], "url": "https://www.gstatic.com/generate_204", "interval": "5m", "tolerance": 50},
-    {"tag": "🎯 直连", "type": "direct"}
+    {"tag": "🎯 直连", "type": "direct"},
+    {"tag": "block", "type": "block"}
   ],
   "route": {
     "rules": [
@@ -128,7 +126,6 @@
       ],
       "mtu": 9000,
       "auto_route": true,
-      "auto_redirect": true,
       "strict_route": true
     },
     {
@@ -142,7 +139,10 @@
       "enabled": true
     },
     "clash_api": {
-      "external_controller": "0.0.0.0:9095",
+      "external_controller": "127.0.0.1:9090",
+      "external_ui": "ui",
+      "external_ui_download_url": "https://gh-proxy.com/https://github.com/Zephyruso/zashboard/archive/refs/heads/gh-pages.zip",
+      "external_ui_download_detour": "🎯 全球直连",
       "secret": "",
       "default_mode": "rule"
     }
