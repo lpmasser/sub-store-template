@@ -970,6 +970,18 @@ const importRemoteConfig = async () => {
 }
 
 
+function getSafeTimestamp() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hour = String(now.getHours()).padStart(2, '0');
+  const minute = String(now.getMinutes()).padStart(2, '0');
+  const second = String(now.getSeconds()).padStart(2, '0');
+  return `${year}${month}${day}-${hour}${minute}${second}`;
+}
+
+
 /* 导入远程配置 */
 const importSubstoreConfig = async () => {
 //   const input = await Plugins.prompt('请输入配置链接：', '', { placeholder: 'http(s):// -- 多个链接请换行输入', type: 'code' })
@@ -992,8 +1004,7 @@ const importSubstoreConfig = async () => {
     const url = urls[i]
     if (result.status === 'fulfilled') {
       try {
-        const now = new Date()
-        const host = new URL(url).hostname + now.toLocaleString()
+        const host = new URL(url).hostname + '-' + getSafeTimestamp()
         const importer = new ConfigImporter(result.value, host)
         await importer.process()
         Plugins.message.success(`链接 "${url}" 导入成功`)
