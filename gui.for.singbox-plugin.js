@@ -978,7 +978,7 @@ const importSubstoreConfig = async () => {
 //       ?.split('\n')
 //       .map((url) => url.trim())
 //       .filter(Boolean) ?? []
-  const urls = 'https://sub.eloyzh.de/share/file/singbox-eloy?token=G_UejFqZrUwuL7NQBGJ44'
+  const urls = ['https://sub.eloyzh.de/share/file/singbox-eloy?token=G_UejFqZrUwuL7NQBGJ44']
 
   if (urls.length === 0) {
     Plugins.message.warn('未输入任何链接')
