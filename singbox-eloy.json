@@ -54,8 +54,7 @@
     {"tag": "♻️ 日本自动", "type": "urltest", "outbounds": [], "url": "https://www.gstatic.com/generate_204", "interval": "5m", "tolerance": 50},
     {"tag": "♻️ 狮城自动", "type": "urltest", "outbounds": [], "url": "https://www.gstatic.com/generate_204", "interval": "5m", "tolerance": 50},
     {"tag": "♻️ 欧洲自动", "type": "urltest", "outbounds": [], "url": "https://www.gstatic.com/generate_204", "interval": "5m", "tolerance": 50},
-    {"tag": "🎯 直连", "type": "direct"},
-    {"tag": "block", "type": "block"}
+    {"tag": "🎯 直连", "type": "direct"}
   ],
   "route": {
     "rules": [
@@ -66,7 +65,7 @@
       {"clash_mode": "global", "outbound": "🚀 默认代理"},
       {"rule_set": "geosite-direct", "outbound": "🎯 直连"},
       {"rule_set": "geosite-proxy", "outbound": "🧩 代理补充"},
-      {"rule_set": "geosite-adblock", "outbound": "block"},
+      {"rule_set": "geosite-adblock", "action": "reject"},
       {"rule_set": "geosite-ai", "outbound": "🧠 AI"},
       {"rule_set": "geosite-youtube", "outbound": "📹 YouTube"},
       {"rule_set": "geosite-google", "outbound": "🍀 Google"},
