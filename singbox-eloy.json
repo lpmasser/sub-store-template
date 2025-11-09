@@ -7,11 +7,15 @@
       {"tag": "fakeip", "type": "fakeip", "inet4_range": "198.18.0.0/15", "inet6_range": "fc00::/18"}
     ],
     "rules": [
+      { "rule_set": "geosite-adblock-dns", "action": "predefined", "rcode": "NXDOMAIN" },
       {"clash_mode": "direct", "server": "local"},
       {"clash_mode": "global", "server": "fakeip"},
       {"domain_suffix": ["services.googleapis.cn", "googleapis.cn", "xn--ngstr-lra8j.com"], "server": "foreign"},
       {"rule_set": ["geosite-cn", "geosite-steamcn", "geosite-apple"], "server": "local"},
       {"query_type": ["A", "AAAA"], "server": "fakeip", "rewrite_ttl": 1}
+    ],
+    "rule_set": [
+      {"tag": "geosite-adblock-dns", "type": "remote", "format": "binary", "url": "https://gh-proxy.com/https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblocksingbox.srs", "download_detour": "🎯 直连"}
     ],
     "final": "foreign",
     "strategy": "ipv4_only",
@@ -19,9 +23,9 @@
     "reverse_mapping": true
   },
   "outbounds": [
-    {"tag": "🚀 默认代理", "type": "selector", "outbounds": ["♻️ 自动选择", "♻️ 自建VPS", "♻️ 香港自动", "♻️ 台湾自动", "♻️ 日本自动", "♻️ 美国自动", "♻️ 狮城自动", "♻️ 欧洲自动", "🌐 全部节点", "🎯 直连", "REJECT"]},
+    {"tag": "🚀 默认代理", "type": "selector", "outbounds": ["♻️ 自动选择", "♻️ 自建VPS", "♻️ 香港自动", "♻️ 台湾自动", "♻️ 日本自动", "♻️ 美国自动", "♻️ 狮城自动", "♻️ 欧洲自动", "🌐 全部节点", "🎯 直连"]},
     {"tag": "🧠 AI", "type": "selector", "outbounds": ["🚀 默认代理", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲"]},
-    {"tag": "🧩 代理补充", "type": "selector", "outbounds": ["♻️ 自动选择", "♻️ 自建VPS", "♻️ 香港自动", "♻️ 台湾自动", "♻️ 日本自动", "♻️ 美国自动", "♻️ 狮城自动", "♻️ 欧洲自动", "🌐 全部节点", "🎯 直连", "REJECT"]},
+    {"tag": "🧩 代理补充", "type": "selector", "outbounds": ["♻️ 自动选择", "♻️ 自建VPS", "♻️ 香港自动", "♻️ 台湾自动", "♻️ 日本自动", "♻️ 美国自动", "♻️ 狮城自动", "♻️ 欧洲自动", "🌐 全部节点", "🎯 直连"]},
     {"tag": "🍀 Google", "type": "selector", "outbounds": ["🚀 默认代理", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲", "🧩 代理补充"]},
     {"tag": "📹 YouTube", "type": "selector", "outbounds": ["🚀 默认代理", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲", "🧩 代理补充"]},
     {"tag": "🎥 NETFLIX", "type": "selector", "outbounds": ["🚀 默认代理", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲", "🧩 代理补充"]},
@@ -34,7 +38,7 @@
     {"tag": "🎵 TikTok", "type": "selector", "outbounds": ["🚀 默认代理", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲", "🧩 代理补充"]},
     {"tag": "🐬 OneDrive", "type": "selector", "outbounds": ["🚀 默认代理", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲", "🧩 代理补充"]},
     {"tag": "🎮 Steam", "type": "selector", "outbounds": ["🚀 默认代理", "🇭🇰 香港", "🇹🇼 台湾", "🇯🇵 日本", "🇸🇬 狮城", "🇪🇺 欧洲", "🧩 代理补充"]},
-    {"tag": "🐟 漏网之鱼", "type": "selector", "outbounds": ["🚀 默认代理", "♻️ 自建VPS", "♻️ 香港自动", "♻️ 日本自动", "♻️ 美国自动", "♻️ 狮城自动", "🌐 全部节点", "🎯 直连", "REJECT"]},
+    {"tag": "🐟 漏网之鱼", "type": "selector", "outbounds": ["🚀 默认代理", "♻️ 自建VPS", "♻️ 香港自动", "♻️ 日本自动", "♻️ 美国自动", "♻️ 狮城自动", "🌐 全部节点", "🎯 直连"]},
     {"tag": "🇭🇰 香港", "type": "selector", "outbounds": ["♻️ 香港自动"]},
     {"tag": "🇹🇼 台湾", "type": "selector", "outbounds": ["♻️ 台湾自动"]},
     {"tag": "🇯🇵 日本", "type": "selector", "outbounds": ["♻️ 日本自动"]},
@@ -49,8 +53,7 @@
     {"tag": "♻️ 日本自动", "type": "urltest", "outbounds": [], "url": "https://www.gstatic.com/generate_204", "interval": "5m", "tolerance": 50},
     {"tag": "♻️ 狮城自动", "type": "urltest", "outbounds": [], "url": "https://www.gstatic.com/generate_204", "interval": "5m", "tolerance": 50},
     {"tag": "♻️ 欧洲自动", "type": "urltest", "outbounds": [], "url": "https://www.gstatic.com/generate_204", "interval": "5m", "tolerance": 50},
-    {"tag": "🎯 直连", "type": "direct"},
-    {"tag": "REJECT", "type": "block"}
+    {"tag": "🎯 直连", "type": "direct"}
   ],
   "route": {
     "rules": [
@@ -61,7 +64,7 @@
       {"clash_mode": "global", "outbound": "🚀 默认代理"},
       {"rule_set": "geosite-direct", "outbound": "🎯 直连"},
       {"rule_set": "geosite-proxy", "outbound": "🧩 代理补充"},
-      {"rule_set": "geosite-adblock", "outbound": "REJECT"},
+      {"rule_set": "geosite-adblock", "outbound": "block"},
       {"rule_set": "geosite-ai", "outbound": "🧠 AI"},
       {"rule_set": "geosite-youtube", "outbound": "📹 YouTube"},
       {"rule_set": "geosite-google", "outbound": "🍀 Google"},
