@@ -213,7 +213,7 @@ const APPEND_GROUPS = [
   { tag: '♻️ 自动选择', pattern: { any: ['IPLC'], not: ['E', 'F', '套餐', '奈飛', '流媒體'] } },
   // { tag: '♻️ 自建VPS', pattern: { any: ['自建'] } },
   // { tag: '♻️ 公益VPS', pattern: { any: ['linuxdo'] } },
-  { tag: '♻️ sixty家宽', pattern: { all: ['家宽拼车', 'sixtynet'], ci: true } },
+  { tag: '♻️ 家宽', pattern: { all: ['家宽拼车', 'vircs'], ci: true } },
   { tag: '♻️ 自建dmitpro', pattern: { all: ['自建', 'dmitpro'], ci: true } },
   { tag: '♻️ 自建dmiteb', pattern: { all: ['自建', 'dmiteb'], ci: true } },
   { tag: '♻️ 自建isifjp', pattern: { all: ['自建', 'isifjp'], ci: true } },
