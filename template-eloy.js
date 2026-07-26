@@ -217,7 +217,7 @@ const APPEND_GROUPS = [
   { tag: '♻️ 自建dmitpro', pattern: { all: ['自建', 'dmitpro'], ci: true } },
   { tag: '♻️ 自建dmiteb', pattern: { all: ['自建', 'dmiteb'], ci: true } },
   { tag: '♻️ 自建isifjp', pattern: { all: ['自建', 'isifjp'], ci: true } },
-  { tag: '♻️ 自建vmiss', pattern: { all: ['自建', 'vmiss'], ci: true } },
+  // { tag: '♻️ 自建vmiss', pattern: { all: ['自建', 'vmiss'], ci: true } },
 
   { tag: '♻️ 美国自动', pattern: { any: ['美', 'US', 'States', 'America'], not: [...EX_BASE, '港', '台', '日', '韩', '新'], ci: true } },
   { tag: '♻️ 香港自动', pattern: { any: ['港', 'HK', 'Hong'], not: [...EX_BASE, '台', '日', '韩', '新', '深', '美'], ci: true } },
