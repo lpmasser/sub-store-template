@@ -1,4 +1,4 @@
-name: Build HaGeZi Pro for sing-box
+name: Build client rule artifacts
 
 on:
   workflow_dispatch:
@@ -8,17 +8,18 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/build-hagezi-pro.yml
+      - .github/workflows/build-rules.yml
+      - rules/sources.json
+      - scripts/build-rules.mjs
 
 permissions:
   contents: read
 
 concurrency:
-  group: build-hagezi-pro-${{ github.ref }}
+  group: build-client-rules-${{ github.ref }}
   cancel-in-progress: false
 
 env:
-  HAGEZI_PRO_URL: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/pro.txt
   SING_BOX_VERSION: 1.13.14
   SING_BOX_LINUX_AMD64_SHA256: f48703461a15476951ac4967cdad339d986f4b8096b4eb3ff0829a500502d697
 
@@ -62,61 +63,30 @@ jobs:
           echo "${bin_dir}" >> "${GITHUB_PATH}"
           "${bin_dir}/sing-box" version
 
-      - name: Convert HaGeZi Pro
+      - name: Build rule artifacts
         shell: bash
+        env:
+          SING_BOX_BIN: sing-box
         run: |
           set -euo pipefail
+          node scripts/build-rules.mjs
 
-          source_file="${RUNNER_TEMP}/hagezi-pro.txt"
-          output_file="rules/hagezi-pro.srs"
-
-          curl \
-            --fail \
-            --location \
-            --retry 3 \
-            --retry-all-errors \
-            --connect-timeout 15 \
-            --output "${source_file}" \
-            "${HAGEZI_PRO_URL}"
-
-          rule_count=$(grep -c '^||' "${source_file}" || true)
-          if (( rule_count < 100000 )); then
-            echo "HaGeZi Pro source is unexpectedly small: ${rule_count} rules" >&2
-            exit 1
-          fi
-
-          mkdir -p "$(dirname "${output_file}")"
-          sing-box rule-set convert \
-            --type adguard \
-            --output "${output_file}" \
-            "${source_file}"
-          test -s "${output_file}"
-
-          sing-box rule-set match \
-            --format binary \
-            "${output_file}" \
-            googleads.g.doubleclick.net 2>&1 | grep -q '^match '
-          if sing-box rule-set match --format binary "${output_file}" apple.com 2>&1 | grep -q '^match '; then
-            echo "HaGeZi Pro unexpectedly blocks apple.com" >&2
-            exit 1
-          fi
-
-      - name: Commit updated artifact
+      - name: Commit updated artifacts
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
-          git add -- rules/hagezi-pro.srs
+          git add -- rules/hagezi-pro.srs rules/shadowrocket
           if git diff --cached --quiet; then
-            echo "HaGeZi Pro artifact is already current"
+            echo "Rule artifacts are already current"
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore(rules): update HaGeZi Pro SRS"
+          git commit -m "chore(rules): update generated client rules"
           git push \
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
             "HEAD:refs/heads/${GITHUB_REF_NAME}"
