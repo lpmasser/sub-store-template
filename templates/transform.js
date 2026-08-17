@@ -17,9 +17,7 @@ const policy = JSON.parse(await produceArtifact({
 validatePolicy(policy)
 
 const proxies = await loadProxies(target, policy.collection)
-if (target === 'sing-box') {
-  proxies.push(...await loadSingBoxPrivateRelays(policy, proxies))
-}
+proxies.push(...await loadPrivateRelays(policy, proxies, target))
 const proxyTags = proxies.map(proxy => target === 'sing-box' ? proxy.tag : proxy.name)
 
 if (proxyTags.length === 0) {
@@ -58,9 +56,11 @@ async function loadProxies(clientTarget, collection) {
   return Array.isArray(parsed?.proxies) ? parsed.proxies : []
 }
 
-async function loadSingBoxPrivateRelays(candidate, baseProxies) {
-  const relaySpecs = candidate.singBoxPrivateRelays || []
-  const baseTags = new Set(baseProxies.map(proxy => proxy.tag))
+async function loadPrivateRelays(candidate, baseProxies, clientTarget) {
+  const relaySpecs = candidate.privateRelays || []
+  const baseTags = new Set(baseProxies.map(proxy => (
+    clientTarget === 'sing-box' ? proxy.tag : proxy.name
+  )))
   const relays = []
 
   for (const relay of relaySpecs) {
@@ -81,14 +81,40 @@ async function loadSingBoxPrivateRelays(candidate, baseProxies) {
       throw new Error(`私密中转文件 ${relay.file} 的协议必须为 ${relay.protocol}`)
     }
 
-    relays.push({
-      ...privateOutbound,
-      tag: relay.tag,
-      detour: relay.detour,
-    })
+    if (clientTarget === 'sing-box') {
+      relays.push({
+        ...privateOutbound,
+        tag: relay.tag,
+        detour: relay.detour,
+      })
+    } else {
+      relays.push(renderShadowrocketPrivateRelay(privateOutbound, relay))
+    }
   }
 
   return relays
+}
+
+function renderShadowrocketPrivateRelay(privateOutbound, relay) {
+  if (
+    !privateOutbound.server ||
+    !Number.isInteger(privateOutbound.server_port) ||
+    !privateOutbound.method ||
+    !privateOutbound.password
+  ) {
+    throw new Error(`私密中转文件 ${relay.file} 缺少 Shadowsocks 连接字段`)
+  }
+
+  return {
+    name: relay.tag,
+    type: 'ss',
+    server: privateOutbound.server,
+    port: privateOutbound.server_port,
+    cipher: privateOutbound.method,
+    password: privateOutbound.password,
+    udp: privateOutbound.network !== 'tcp',
+    'dialer-proxy': relay.detour,
+  }
 }
 
 function validatePolicy(candidate) {
@@ -122,10 +148,10 @@ function validatePolicy(candidate) {
   }
 
   assertUnique(candidate.groups.map(group => group.tag), '策略组 tag')
-  if (!Array.isArray(candidate.singBoxPrivateRelays)) {
-    throw new Error('routing-policy 的 singBoxPrivateRelays 必须为数组')
+  if (!Array.isArray(candidate.privateRelays)) {
+    throw new Error('routing-policy 的 privateRelays 必须为数组')
   }
-  assertUnique(candidate.singBoxPrivateRelays.map(relay => relay.tag), '私密中转 tag')
+  assertUnique(candidate.privateRelays.map(relay => relay.tag), '私密中转 tag')
   assertUnique(candidate.routing.ruleSets.map(ruleSet => ruleSet.tag), '规则集 tag')
   assertUnique(candidate.routing.ruleSets.map(ruleSet => ruleSet.shadowrocketFile), 'Shadowrocket 规则文件')
 
@@ -135,7 +161,7 @@ function validatePolicy(candidate) {
     }
   }
 
-  for (const relay of candidate.singBoxPrivateRelays) {
+  for (const relay of candidate.privateRelays) {
     if (!relay.file || !relay.protocol || !relay.detour) {
       throw new Error(`私密中转 ${relay.tag} 缺少 file、protocol 或 detour`)
     }

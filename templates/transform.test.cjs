@@ -39,6 +39,7 @@ async function runTransform(target, proxyTags, options = {}) {
           server_port: 443,
           method: 'aes-128-gcm',
           password: 'test-only',
+          network: 'tcp',
         })
       }
       if (request.type !== 'collection' || request.name !== inputPolicy.collection) {
@@ -100,7 +101,7 @@ function assertValidGroups(config, target) {
 }
 
 const currentProxyTags = [
-  '[自建][家宽拼车]Vircs-Malibu[美国.LAX]',
+  '[自建][家宽拼车]Vircs-SS[经DMIT Pro]',
   '[自建]dmitpro-hy2[美国.LAX]',
   '[自建]dmitpro-vless[美国.LAX]',
   '[自建]dmiteb-hy2',
@@ -132,7 +133,7 @@ const egressDefaults = new Map([
   ['🇺🇸 DMIT Pro', '[自建]dmitpro-vless[美国.LAX]'],
   ['🇺🇸 DMIT EB', '[自建]dmiteb-vless'],
   ['🇯🇵 ISIF JP', '[自建]isifjp-vless'],
-  ['🏠 美国家宽', '[自建][家宽拼车]Vircs-Malibu[美国.LAX]'],
+  ['🏠 美国家宽', '[自建][家宽拼车]Vircs-SS[经DMIT Pro]'],
 ])
 
 const vircsEBRelayTag = '[自建][家宽拼车]Vircs-SS[经DMIT EB]'
@@ -168,7 +169,7 @@ test('renders the complete sing-box strategy and egress graph without URLTest', 
   assert.equal(vircsEBRelay.detour, '[自建]dmiteb-vless')
   assert.deepEqual(
     groups.find(group => group.tag === '🏠 美国家宽').outbounds,
-    ['[自建][家宽拼车]Vircs-Malibu[美国.LAX]', vircsEBRelayTag],
+    ['[自建][家宽拼车]Vircs-SS[经DMIT Pro]', vircsEBRelayTag],
   )
 })
 
@@ -179,10 +180,20 @@ test('renders one complete Shadowrocket profile with the same selectors and REJE
   const providers = result.config['rule-providers']
 
   assertValidGroups(result.config, 'shadowrocket')
-  assert.equal(result.config.proxies.length, currentProxyTags.length)
+  assert.equal(result.config.proxies.length, currentProxyTags.length + 1)
   assert.equal(groups.length, 20)
   assert.equal(groups.filter(group => group.type === 'url-test').length, 0)
-  assert.ok(!result.config.proxies.some(proxy => proxy.name === vircsEBRelayTag))
+  const vircsEBRelay = result.config.proxies.find(proxy => proxy.name === vircsEBRelayTag)
+  assert.deepEqual(vircsEBRelay, {
+    name: vircsEBRelayTag,
+    type: 'ss',
+    server: 'residential.example.com',
+    port: 443,
+    cipher: 'aes-128-gcm',
+    password: 'test-only',
+    udp: false,
+    'dialer-proxy': '[自建]dmiteb-vless',
+  })
   assert.deepEqual(groupTags, new Set([...strategyTags, ...egressDefaults.keys()]))
   assert.ok(groups.every(group => group.type === 'select'))
   assert.equal(
@@ -195,6 +206,10 @@ test('renders one complete Shadowrocket profile with the same selectors and REJE
     assert.equal(group['policy-select-name'], defaultNode)
     assert.equal(group.proxies[0], defaultNode)
   }
+  assert.deepEqual(
+    groups.find(group => group.name === '🏠 美国家宽').proxies,
+    ['[自建][家宽拼车]Vircs-SS[经DMIT Pro]', vircsEBRelayTag],
+  )
   assert.equal(Object.keys(providers).length, 22)
   assert.deepEqual(Object.keys(providers), policy.routing.ruleSets.map(ruleSet => ruleSet.tag))
   for (const ruleSet of policy.routing.ruleSets) {

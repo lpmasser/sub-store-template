@@ -14,7 +14,7 @@ SubStore 通过 GitHub Raw 读取 JSON 模板和分流策略，Script Operator �
 
 共享分组采用“业务策略 → 稳定出口 → 协议节点”两级选择结构。业务策略完整保留；出口使用普通 selector，VLESS 为默认、Hysteria2 为手动备用，不进行周期性 URLTest。
 
-sing-box 还可以通过 `routing-policy.json` 的 `singBoxPrivateRelays` 引用 SubStore 中的私密本地文件，生成不把凭据写入 Git 的链式出站。当前美国家宽的第二条路径使用 DMIT EB VLESS 作为 `detour`，再直连私密文件中的 Vircs Shadowsocks 上游；Shadowrocket 输出不读取该私密文件。
+两个客户端还可以通过 `routing-policy.json` 的 `privateRelays` 引用 SubStore 中的私密本地文件，生成不把凭据写入 Git 的链式出站。当前美国家宽的第二条路径先使用 DMIT EB VLESS，再连接私密文件中的 Vircs Shadowsocks 上游：sing-box 渲染为 `detour`，Shadowrocket Clash YAML 渲染为 `dialer-proxy`。
 
 验证：
 

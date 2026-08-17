@@ -3,7 +3,7 @@
   "collection": "proxy-all",
   "directPolicy": "DIRECT",
   "singBoxDirectTag": "🎯 直连",
-  "singBoxPrivateRelays": [
+  "privateRelays": [
     {
       "tag": "[自建][家宽拼车]Vircs-SS[经DMIT EB]",
       "file": "vircs-client-ss",
@@ -37,7 +37,7 @@
     {"tag": "🇺🇸 DMIT Pro", "type": "selector", "match": "dmitpro", "default": "[自建]dmitpro-vless[美国.LAX]"},
     {"tag": "🇺🇸 DMIT EB", "type": "selector", "match": "dmiteb", "default": "[自建]dmiteb-vless"},
     {"tag": "🇯🇵 ISIF JP", "type": "selector", "match": "isifjp", "default": "[自建]isifjp-vless"},
-    {"tag": "🏠 美国家宽", "type": "selector", "match": "home", "default": "[自建][家宽拼车]Vircs-Malibu[美国.LAX]"}
+    {"tag": "🏠 美国家宽", "type": "selector", "match": "home", "default": "[自建][家宽拼车]Vircs-SS[经DMIT Pro]"}
   ],
   "routing": {
     "inline": [
