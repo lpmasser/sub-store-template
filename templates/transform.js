@@ -74,19 +74,26 @@ function validatePolicy(candidate) {
   if (!/^https:\/\//.test(candidate.routing.shadowrocketRuleBaseUrl || '')) {
     throw new Error('routing-policy 缺少 Shadowrocket 规则 URL')
   }
-  if (
+  const hasUrlTest = candidate.groups.some(group => group.type === 'urltest')
+  if (hasUrlTest && (
     !candidate.urlTest ||
     !/^https:\/\//.test(candidate.urlTest.url || '') ||
     !Number.isInteger(candidate.urlTest.intervalSeconds) || candidate.urlTest.intervalSeconds <= 0 ||
     !Number.isInteger(candidate.urlTest.timeoutSeconds) || candidate.urlTest.timeoutSeconds <= 0 ||
     !Number.isFinite(candidate.urlTest.tolerance) || candidate.urlTest.tolerance < 0
-  ) {
+  )) {
     throw new Error('routing-policy 的 urlTest 配置无效')
   }
 
   assertUnique(candidate.groups.map(group => group.tag), '策略组 tag')
   assertUnique(candidate.routing.ruleSets.map(ruleSet => ruleSet.tag), '规则集 tag')
   assertUnique(candidate.routing.ruleSets.map(ruleSet => ruleSet.shadowrocketFile), 'Shadowrocket 规则文件')
+
+  for (const group of candidate.groups) {
+    if (!['selector', 'urltest'].includes(group.type)) {
+      throw new Error(`策略组 ${group.tag} 的类型无效: ${group.type}`)
+    }
+  }
 
   for (const ruleSet of candidate.routing.ruleSets) {
     if (!/^https:\/\//.test(ruleSet.singBoxUrl || '')) {

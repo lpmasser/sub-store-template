@@ -12,6 +12,8 @@
 
 SubStore 通过 GitHub Raw 读取 JSON 模板和分流策略，Script Operator 使用 `link` 模式读取 `transform.js`。修改模板只在本仓库维护，不向基础设施仓库复制第二份。
 
+共享分组采用“业务策略 → 稳定出口 → 协议节点”两级选择结构。业务策略完整保留；出口使用普通 selector，VLESS 为默认、Hysteria2 为手动备用，不进行周期性 URLTest。
+
 验证：
 
 ```sh

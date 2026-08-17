@@ -90,20 +90,55 @@ function assertValidGroups(config, target) {
 }
 
 const currentProxyTags = [
-  '[家宽拼车]Vircs-Malibu[美国.LAX]',
-  'dmitpro-hy2[美国.LAX]',
-  'dmitpro-vless1[美国.LAX]',
-  'dmitpro-vless2[美国.LAX]',
+  '[自建][家宽拼车]Vircs-Malibu[美国.LAX]',
+  '[自建]dmitpro-hy2[美国.LAX]',
+  '[自建]dmitpro-vless[美国.LAX]',
+  '[自建]dmiteb-hy2',
+  '[自建]dmiteb-vless',
+  '[自建]isifjp-hy2',
+  '[自建]isifjp-vless',
 ]
 
-test('shared policy preserves the current sing-box graph and DNS-only ad blocking', async () => {
+const strategyTags = [
+  '🚀 默认代理',
+  '🧠 AI',
+  '🧩 代理补充',
+  '🍀 Google',
+  '📹 YouTube',
+  '🎥 NETFLIX',
+  '🍏 Apple',
+  '🎶 Spotify',
+  '👨🏿‍💻 GitHub',
+  '🪟 Microsoft',
+  '💶 PayPal',
+  '📲 Telegram',
+  '🎵 TikTok',
+  '🐬 OneDrive',
+  '🎮 Steam',
+  '🐟 漏网之鱼',
+]
+
+const egressDefaults = new Map([
+  ['🇺🇸 DMIT Pro', '[自建]dmitpro-vless[美国.LAX]'],
+  ['🇺🇸 DMIT EB', '[自建]dmiteb-vless'],
+  ['🇯🇵 ISIF JP', '[自建]isifjp-vless'],
+  ['🏠 美国家宽', '[自建][家宽拼车]Vircs-Malibu[美国.LAX]'],
+])
+
+test('renders the complete sing-box strategy and egress graph without URLTest', async () => {
   const result = await runTransform('sing-box', currentProxyTags)
   const tags = new Set(result.config.outbounds.map(outbound => outbound.tag))
+  const groups = result.config.outbounds.filter(outbound => ['selector', 'urltest'].includes(outbound.type))
+  const groupTags = new Set(groups.map(group => group.tag))
 
   assertValidGroups(result.config, 'sing-box')
-  assert.ok(tags.has('🇺🇸 美国'))
-  assert.ok(!tags.has('🇭🇰 香港'))
-  assert.ok(!tags.has('♻️ 香港自动'))
+  assert.deepEqual(groupTags, new Set([...strategyTags, ...egressDefaults.keys()]))
+  assert.ok(groups.every(group => group.type === 'selector'))
+  assert.equal(groups.find(group => group.tag === '🚀 默认代理').default, '🇺🇸 DMIT Pro')
+  assert.equal(groups.find(group => group.tag === '🧠 AI').default, '🏠 美国家宽')
+  for (const [tag, defaultNode] of egressDefaults) {
+    assert.equal(groups.find(group => group.tag === tag).default, defaultNode)
+  }
   assert.equal(result.config.dns.rules[0].rule_set, 'geosite-adblock')
   assert.equal(result.config.dns.rules[0].rcode, 'NXDOMAIN')
   assert.equal(
@@ -114,17 +149,29 @@ test('shared policy preserves the current sing-box graph and DNS-only ad blockin
     result.config.route.rule_set.map(ruleSet => ruleSet.tag),
     policy.routing.ruleSets.map(ruleSet => ruleSet.tag),
   )
-  assert.ok(result.logs.some(message => message.includes('removed empty groups')))
+  assert.ok(!result.logs.some(message => message.includes('removed empty groups')))
+  for (const tag of currentProxyTags) assert.ok(tags.has(tag))
 })
 
-test('renders one complete Shadowrocket profile with shared groups and REJECT ad blocking', async () => {
+test('renders one complete Shadowrocket profile with the same selectors and REJECT ad blocking', async () => {
   const result = await runTransform('shadowrocket', currentProxyTags)
-  const groupTags = new Set(result.config['proxy-groups'].map(group => group.name))
+  const groups = result.config['proxy-groups']
+  const groupTags = new Set(groups.map(group => group.name))
 
   assertValidGroups(result.config, 'shadowrocket')
   assert.equal(result.config.proxies.length, currentProxyTags.length)
-  assert.ok(groupTags.has('🇺🇸 美国'))
-  assert.ok(!groupTags.has('🇭🇰 香港'))
+  assert.deepEqual(groupTags, new Set([...strategyTags, ...egressDefaults.keys()]))
+  assert.ok(groups.every(group => group.type === 'select'))
+  assert.equal(
+    groups.find(group => group.name === '🚀 默认代理')['policy-select-name'],
+    '🇺🇸 DMIT Pro',
+  )
+  assert.equal(groups.find(group => group.name === '🧠 AI')['policy-select-name'], '🏠 美国家宽')
+  for (const [tag, defaultNode] of egressDefaults) {
+    const group = groups.find(candidate => candidate.name === tag)
+    assert.equal(group['policy-select-name'], defaultNode)
+    assert.equal(group.proxies[0], defaultNode)
+  }
   assert.ok(result.config.rules.includes(
     `${'RULE-SET'},${policy.routing.shadowrocketRuleBaseUrl}/hagezi-pro.list,REJECT`,
   ))
@@ -139,17 +186,41 @@ test('renders one complete Shadowrocket profile with shared groups and REJECT ad
   )
 })
 
-test('recognizes Singapore nodes consistently in both clients', async () => {
+test('removes unavailable egresses but preserves every strategy group', async () => {
+  const dmitProOnly = [
+    '[自建]dmitpro-hy2[美国.LAX]',
+    '[自建]dmitpro-vless[美国.LAX]',
+  ]
+
   for (const target of ['sing-box', 'shadowrocket']) {
-    const result = await runTransform(target, ['自建-新加坡 SG-01'])
-    const group = target === 'sing-box'
-      ? result.config.outbounds.find(outbound => outbound.tag === '♻️ 狮城自动')
-      : result.config['proxy-groups'].find(candidate => candidate.name === '♻️ 狮城自动')
-    const members = target === 'sing-box' ? group?.outbounds : group?.proxies
+    const result = await runTransform(target, dmitProOnly)
+    const groups = target === 'sing-box'
+      ? result.config.outbounds.filter(outbound => ['selector', 'urltest'].includes(outbound.type))
+      : result.config['proxy-groups']
+    const tags = new Set(groups.map(group => target === 'sing-box' ? group.tag : group.name))
 
     assertValidGroups(result.config, target)
-    assert.deepEqual(members, ['自建-新加坡 SG-01'])
+    for (const strategyTag of strategyTags) assert.ok(tags.has(strategyTag))
+    assert.ok(tags.has('🇺🇸 DMIT Pro'))
+    assert.ok(!tags.has('🇺🇸 DMIT EB'))
+    assert.ok(!tags.has('🇯🇵 ISIF JP'))
+    assert.ok(!tags.has('🏠 美国家宽'))
+    assert.ok(result.logs.some(message => message.includes('removed empty groups')))
   }
+})
+
+test('requires URLTest settings only when a URLTest group is configured', async () => {
+  const policyWithUrlTest = structuredClone(policy)
+  policyWithUrlTest.groups.push({
+    tag: 'test-urltest',
+    type: 'urltest',
+    match: 'dmitpro',
+  })
+
+  await assert.rejects(
+    () => runTransform('sing-box', currentProxyTags, { policy: policyWithUrlTest }),
+    /routing-policy 的 urlTest 配置无效/,
+  )
 })
 
 test('refuses to render either client without proxy nodes', async () => {
