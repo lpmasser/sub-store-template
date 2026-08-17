@@ -1,6 +1,24 @@
-# 客户端规则产物
+# SubStore 客户端模板与规则
 
-本仓库只构建当前网络配置使用的规则产物，不保存客户端模板或订阅处理逻辑。
+本仓库保存可公开的 SubStore 客户端模板、共享分流策略和规则产物，不保存节点、订阅 URL 或凭据。
+
+## 客户端模板
+
+- `templates/routing-policy.json`：sing-box 与 Shadowrocket 的唯一分流策略源；
+- `templates/sing-box.json`：sing-box `1.13.14` 运行时模板；
+- `templates/shadowrocket.json`：Shadowrocket Clash 兼容模板；
+- `templates/transform.js`：SubStore 共享渲染器；
+- `templates/transform.test.cjs`：两个客户端的本地转换测试。
+
+SubStore 通过 GitHub Raw 读取 JSON 模板和分流策略，Script Operator 使用 `link` 模式读取 `transform.js`。修改模板只在本仓库维护，不向基础设施仓库复制第二份。
+
+验证：
+
+```sh
+jq empty templates/*.json
+node --check templates/transform.js
+node --test templates/transform.test.cjs
+```
 
 ## HaGeZi Pro
 

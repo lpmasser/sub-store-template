@@ -1,0 +1,74 @@
+{
+  "dns": {
+    "servers": [
+      {"tag": "local", "type": "udp", "server": "223.5.5.5"},
+      {"tag": "public", "type": "https", "server": "dns.alidns.com", "domain_resolver": "local"},
+      {"tag": "foreign", "type": "https", "server": "8.8.8.8", "detour": "🚀 默认代理"},
+      {"tag": "fakeip", "type": "fakeip", "inet4_range": "198.18.0.0/15", "inet6_range": "fc00::/18"}
+    ],
+    "rules": [
+      {"clash_mode": "direct", "server": "local"},
+      {"clash_mode": "global", "server": "fakeip"},
+      {"domain_suffix": ["services.googleapis.cn", "googleapis.cn", "xn--ngstr-lra8j.com"], "server": "foreign"},
+      {"rule_set": ["geosite-cn", "geosite-steamcn", "geosite-apple"], "server": "local"},
+      {"query_type": ["A", "AAAA"], "server": "fakeip", "rewrite_ttl": 1}
+    ],
+    "final": "foreign",
+    "strategy": "ipv4_only",
+    "independent_cache": true,
+    "reverse_mapping": true
+  },
+  "outbounds": [
+    {"tag": "🎯 直连", "type": "direct"}
+  ],
+  "route": {
+    "rules": [
+      {"action": "sniff", "sniffer": ["http", "tls", "quic", "dns"]},
+      {"type": "logical", "mode": "or", "rules": [{"port": 53}, {"protocol": "dns"}], "action": "hijack-dns"},
+      {"ip_is_private": true, "outbound": "🎯 直连"},
+      {"clash_mode": "direct", "outbound": "🎯 直连"},
+      {"clash_mode": "global", "outbound": "🚀 默认代理"}
+    ],
+    "rule_set": [],
+    "final": "🐟 漏网之鱼",
+    "auto_detect_interface": true,
+    "default_domain_resolver": {"server": "public"}
+  },
+  "inbounds": [
+    {
+      "tag": "tun-in",
+      "type": "tun",
+      "address": [
+        "172.19.0.1/30",
+        "fdfe:dcba:9876::1/126"
+      ],
+      "route_exclude_address": [
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16"
+      ],
+      "mtu": 1500,
+      "auto_route": true,
+      "strict_route": true
+    },
+    {
+      "type": "mixed",
+      "listen": "0.0.0.0",
+      "listen_port": 7890
+    }
+  ],
+  "experimental": {
+    "cache_file": {
+      "enabled": true
+    },
+    "clash_api": {
+      "secret": "",
+      "default_mode": "rule"
+    }
+  },
+  "log": {
+    "disabled": false,
+    "level": "info",
+    "timestamp": true
+  }
+}
