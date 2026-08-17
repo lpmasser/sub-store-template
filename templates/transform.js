@@ -17,6 +17,9 @@ const policy = JSON.parse(await produceArtifact({
 validatePolicy(policy)
 
 const proxies = await loadProxies(target, policy.collection)
+if (target === 'sing-box') {
+  proxies.push(...await loadSingBoxPrivateRelays(policy, proxies))
+}
 const proxyTags = proxies.map(proxy => target === 'sing-box' ? proxy.tag : proxy.name)
 
 if (proxyTags.length === 0) {
@@ -55,6 +58,39 @@ async function loadProxies(clientTarget, collection) {
   return Array.isArray(parsed?.proxies) ? parsed.proxies : []
 }
 
+async function loadSingBoxPrivateRelays(candidate, baseProxies) {
+  const relaySpecs = candidate.singBoxPrivateRelays || []
+  const baseTags = new Set(baseProxies.map(proxy => proxy.tag))
+  const relays = []
+
+  for (const relay of relaySpecs) {
+    if (!baseTags.has(relay.detour)) {
+      console.log(`[transform] skipped private relay ${relay.tag}: detour ${relay.detour} is unavailable`)
+      continue
+    }
+
+    const raw = await produceArtifact({
+      name: relay.file,
+      type: 'file',
+    })
+    const privateOutbound = JSON.parse(raw)
+    if (!privateOutbound || Array.isArray(privateOutbound) || typeof privateOutbound !== 'object') {
+      throw new Error(`私密中转文件 ${relay.file} 必须包含一个 sing-box outbound 对象`)
+    }
+    if (privateOutbound.type !== relay.protocol) {
+      throw new Error(`私密中转文件 ${relay.file} 的协议必须为 ${relay.protocol}`)
+    }
+
+    relays.push({
+      ...privateOutbound,
+      tag: relay.tag,
+      detour: relay.detour,
+    })
+  }
+
+  return relays
+}
+
 function validatePolicy(candidate) {
   if (candidate?.schema !== 1) throw new Error('routing-policy schema 必须为 1')
   if (!candidate.collection) throw new Error('routing-policy 缺少 collection')
@@ -86,12 +122,25 @@ function validatePolicy(candidate) {
   }
 
   assertUnique(candidate.groups.map(group => group.tag), '策略组 tag')
+  if (!Array.isArray(candidate.singBoxPrivateRelays)) {
+    throw new Error('routing-policy 的 singBoxPrivateRelays 必须为数组')
+  }
+  assertUnique(candidate.singBoxPrivateRelays.map(relay => relay.tag), '私密中转 tag')
   assertUnique(candidate.routing.ruleSets.map(ruleSet => ruleSet.tag), '规则集 tag')
   assertUnique(candidate.routing.ruleSets.map(ruleSet => ruleSet.shadowrocketFile), 'Shadowrocket 规则文件')
 
   for (const group of candidate.groups) {
     if (!['selector', 'urltest'].includes(group.type)) {
       throw new Error(`策略组 ${group.tag} 的类型无效: ${group.type}`)
+    }
+  }
+
+  for (const relay of candidate.singBoxPrivateRelays) {
+    if (!relay.file || !relay.protocol || !relay.detour) {
+      throw new Error(`私密中转 ${relay.tag} 缺少 file、protocol 或 detour`)
+    }
+    if (relay.protocol !== 'shadowsocks') {
+      throw new Error(`私密中转 ${relay.tag} 的协议必须为 shadowsocks`)
     }
   }
 

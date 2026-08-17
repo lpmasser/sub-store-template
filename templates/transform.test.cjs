@@ -31,6 +31,16 @@ async function runTransform(target, proxyTags, options = {}) {
       if (request.type === 'file' && request.name === 'routing-policy') {
         return JSON.stringify(inputPolicy)
       }
+      if (request.type === 'file' && request.name === 'vircs-client-ss') {
+        return JSON.stringify({
+          tag: 'runtime-secret-tag',
+          type: 'shadowsocks',
+          server: 'residential.example.com',
+          server_port: 443,
+          method: 'aes-128-gcm',
+          password: 'test-only',
+        })
+      }
       if (request.type !== 'collection' || request.name !== inputPolicy.collection) {
         throw new Error(`unexpected artifact request: ${JSON.stringify(request)}`)
       }
@@ -125,6 +135,8 @@ const egressDefaults = new Map([
   ['🏠 美国家宽', '[自建][家宽拼车]Vircs-Malibu[美国.LAX]'],
 ])
 
+const vircsEBRelayTag = '[自建][家宽拼车]Vircs-SS[经DMIT EB]'
+
 test('renders the complete sing-box strategy and egress graph without URLTest', async () => {
   const result = await runTransform('sing-box', currentProxyTags)
   const tags = new Set(result.config.outbounds.map(outbound => outbound.tag))
@@ -151,6 +163,13 @@ test('renders the complete sing-box strategy and egress graph without URLTest', 
   )
   assert.ok(!result.logs.some(message => message.includes('removed empty groups')))
   for (const tag of currentProxyTags) assert.ok(tags.has(tag))
+  const vircsEBRelay = result.config.outbounds.find(outbound => outbound.tag === vircsEBRelayTag)
+  assert.equal(vircsEBRelay.type, 'shadowsocks')
+  assert.equal(vircsEBRelay.detour, '[自建]dmiteb-vless')
+  assert.deepEqual(
+    groups.find(group => group.tag === '🏠 美国家宽').outbounds,
+    ['[自建][家宽拼车]Vircs-Malibu[美国.LAX]', vircsEBRelayTag],
+  )
 })
 
 test('renders one complete Shadowrocket profile with the same selectors and REJECT ad blocking', async () => {
@@ -160,6 +179,7 @@ test('renders one complete Shadowrocket profile with the same selectors and REJE
 
   assertValidGroups(result.config, 'shadowrocket')
   assert.equal(result.config.proxies.length, currentProxyTags.length)
+  assert.ok(!result.config.proxies.some(proxy => proxy.name === vircsEBRelayTag))
   assert.deepEqual(groupTags, new Set([...strategyTags, ...egressDefaults.keys()]))
   assert.ok(groups.every(group => group.type === 'select'))
   assert.equal(

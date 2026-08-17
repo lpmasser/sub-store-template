@@ -3,6 +3,14 @@
   "collection": "proxy-all",
   "directPolicy": "DIRECT",
   "singBoxDirectTag": "🎯 直连",
+  "singBoxPrivateRelays": [
+    {
+      "tag": "[自建][家宽拼车]Vircs-SS[经DMIT EB]",
+      "file": "vircs-client-ss",
+      "protocol": "shadowsocks",
+      "detour": "[自建]dmiteb-vless"
+    }
+  ],
   "patterns": {
     "home": {"all": ["家宽拼车", "vircs"], "ci": true},
     "dmitpro": {"all": ["自建", "dmitpro"], "ci": true},
