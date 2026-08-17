@@ -176,9 +176,12 @@ test('renders one complete Shadowrocket profile with the same selectors and REJE
   const result = await runTransform('shadowrocket', currentProxyTags)
   const groups = result.config['proxy-groups']
   const groupTags = new Set(groups.map(group => group.name))
+  const providers = result.config['rule-providers']
 
   assertValidGroups(result.config, 'shadowrocket')
   assert.equal(result.config.proxies.length, currentProxyTags.length)
+  assert.equal(groups.length, 20)
+  assert.equal(groups.filter(group => group.type === 'url-test').length, 0)
   assert.ok(!result.config.proxies.some(proxy => proxy.name === vircsEBRelayTag))
   assert.deepEqual(groupTags, new Set([...strategyTags, ...egressDefaults.keys()]))
   assert.ok(groups.every(group => group.type === 'select'))
@@ -192,18 +195,32 @@ test('renders one complete Shadowrocket profile with the same selectors and REJE
     assert.equal(group['policy-select-name'], defaultNode)
     assert.equal(group.proxies[0], defaultNode)
   }
-  assert.ok(result.config.rules.includes(
-    `${'RULE-SET'},${policy.routing.shadowrocketRuleBaseUrl}/hagezi-pro.list,REJECT`,
-  ))
+  assert.equal(Object.keys(providers).length, 22)
+  assert.deepEqual(Object.keys(providers), policy.routing.ruleSets.map(ruleSet => ruleSet.tag))
+  for (const ruleSet of policy.routing.ruleSets) {
+    assert.deepEqual(providers[ruleSet.tag], {
+      type: 'http',
+      behavior: 'classical',
+      format: 'text',
+      url: `${policy.routing.shadowrocketRuleBaseUrl}/${ruleSet.shadowrocketFile}`,
+      path: `./rule-providers/${ruleSet.shadowrocketFile}`,
+      interval: 86400,
+    })
+  }
+
+  assert.equal(result.config.rules.length, 48)
   assert.equal(result.config.rules.at(-1), `MATCH,${policy.routing.final}`)
 
-  const renderedRemoteFiles = result.config.rules
+  const renderedRuleSets = result.config.rules
     .filter(rule => rule.startsWith('RULE-SET,'))
-    .map(rule => rule.split(',')[1].split('/').at(-1))
+  assert.equal(renderedRuleSets.length, 22)
+  assert.ok(renderedRuleSets.every(rule => !rule.split(',')[1].startsWith('http')))
+  assert.ok(renderedRuleSets.every(rule => Object.hasOwn(providers, rule.split(',')[1])))
   assert.deepEqual(
-    renderedRemoteFiles,
-    policy.routing.ruleSets.map(ruleSet => ruleSet.shadowrocketFile),
+    renderedRuleSets.map(rule => rule.split(',')[1]),
+    policy.routing.ruleSets.map(ruleSet => ruleSet.tag),
   )
+  assert.ok(result.config.rules.includes('RULE-SET,geosite-adblock,REJECT'))
 })
 
 test('removes unavailable egresses but preserves every strategy group', async () => {

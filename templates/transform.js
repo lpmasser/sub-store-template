@@ -438,6 +438,20 @@ function renderShadowrocket(config, candidate, nodes, groupModels) {
     return rendered
   })
 
+  config['rule-providers'] = Object.fromEntries(
+    candidate.routing.ruleSets.map(ruleSet => [
+      ruleSet.tag,
+      {
+        type: 'http',
+        behavior: 'classical',
+        format: 'text',
+        url: `${candidate.routing.shadowrocketRuleBaseUrl}/${ruleSet.shadowrocketFile}`,
+        path: `./rule-providers/${ruleSet.shadowrocketFile}`,
+        interval: 86400,
+      },
+    ]),
+  )
+
   const rules = [
     'IP-CIDR,127.0.0.0/8,DIRECT,no-resolve',
     'IP-CIDR,10.0.0.0/8,DIRECT,no-resolve',
@@ -463,8 +477,7 @@ function renderShadowrocket(config, candidate, nodes, groupModels) {
       ruleSet.policy ? mapPolicy(ruleSet.policy, 'shadowrocket', candidate) : undefined
     )
     if (!destination) continue
-    const url = `${candidate.routing.shadowrocketRuleBaseUrl}/${ruleSet.shadowrocketFile}`
-    rules.push(`RULE-SET,${url},${destination}`)
+    rules.push(`RULE-SET,${ruleSet.tag},${destination}`)
   }
 
   rules.push(`MATCH,${mapPolicy(candidate.routing.final, 'shadowrocket', candidate)}`)
