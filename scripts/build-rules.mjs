@@ -11,12 +11,10 @@ const hageziUrl = 'https://raw.githubusercontent.com/hagezi/dns-blocklists/main/
 const generatedHeader = '# Generated file. Do not edit.\n'
 const temporaryDirectory = await mkdtemp(join(tmpdir(), 'sub-store-rules-'))
 const temporaryOutputDirectory = join(temporaryDirectory, 'output')
-const temporaryShadowrocketDirectory = join(temporaryOutputDirectory, 'shadowrocket')
 const temporaryEgernDirectory = join(temporaryOutputDirectory, 'egern')
 
 try {
   validateManifest(manifest)
-  await mkdir(temporaryShadowrocketDirectory, { recursive: true })
   await mkdir(temporaryEgernDirectory, { recursive: true })
   await buildHagezi()
   for (const ruleSet of manifest.ruleSets) await buildClientRuleSet(ruleSet)
@@ -80,11 +78,6 @@ async function buildHagezi() {
   ], { capture: true })
   if (!/^match /m.test(binaryMatch)) throw new Error('HaGeZi SRS semantic match failed')
 
-  const shadowrocketPath = join(temporaryShadowrocketDirectory, 'hagezi-pro.list')
-  await writeFile(
-    shadowrocketPath,
-    `${generatedHeader}# Source: ${hageziUrl}\n${uniqueDomains.map(domain => `DOMAIN-SUFFIX,${domain}`).join('\n')}\n`,
-  )
   await writeFile(
     join(temporaryEgernDirectory, 'hagezi-pro.yaml'),
     `${generatedHeader}# Source: ${hageziUrl}\n${serializeEgernRuleSet({
@@ -104,51 +97,24 @@ async function buildClientRuleSet(ruleSet) {
   if (!Array.isArray(source.rules) || source.rules.length === 0) {
     throw new Error(`${ruleSet.artifact} decompiled to an empty rule-set`)
   }
-  const regexCount = source.rules.reduce(
-    (count, rule) => count + normalizeList(rule.domain_regex).length,
-    0,
-  )
-  const lines = uniq(source.rules.flatMap(convertRuleObject))
-  if (lines.length === 0) throw new Error(`${ruleSet.artifact} produced no client rules`)
-
-  const outputPath = join(temporaryShadowrocketDirectory, `${ruleSet.artifact}.list`)
-  await writeFile(
-    outputPath,
-    `${generatedHeader}# Source: ${ruleSet.source}\n${lines.join('\n')}\n`,
-  )
   await writeFile(
     join(temporaryEgernDirectory, `${ruleSet.artifact}.yaml`),
     `${generatedHeader}# Source: ${ruleSet.source}\n${serializeEgernRuleSet(
       collectEgernRuleSet(source.rules),
     )}`,
   )
-  console.log(
-    `built ${ruleSet.artifact}: ${lines.length} rules` +
-    (regexCount > 0 ? ` (${regexCount} domain regex converted to wildcard)` : ''),
-  )
+  console.log(`built ${ruleSet.artifact}`)
 }
 
 async function publishArtifacts() {
   const rulesDirectory = join(repositoryRoot, 'rules')
-  const shadowrocketDirectory = join(rulesDirectory, 'shadowrocket')
   const egernDirectory = join(rulesDirectory, 'egern')
-  const expectedShadowrocketFiles = new Set([
-    'hagezi-pro.list',
-    ...manifest.ruleSets.map(ruleSet => `${ruleSet.artifact}.list`),
-  ])
   const expectedEgernFiles = new Set([
     'hagezi-pro.yaml',
     ...manifest.ruleSets.map(ruleSet => `${ruleSet.artifact}.yaml`),
   ])
 
-  await mkdir(shadowrocketDirectory, { recursive: true })
   await mkdir(egernDirectory, { recursive: true })
-  for (const fileName of expectedShadowrocketFiles) {
-    await copyFile(
-      join(temporaryShadowrocketDirectory, fileName),
-      join(shadowrocketDirectory, fileName),
-    )
-  }
   for (const fileName of expectedEgernFiles) {
     await copyFile(
       join(temporaryEgernDirectory, fileName),
@@ -160,7 +126,6 @@ async function publishArtifacts() {
     join(rulesDirectory, 'hagezi-pro.srs'),
   )
 
-  await removeStaleArtifacts(shadowrocketDirectory, '.list', expectedShadowrocketFiles)
   await removeStaleArtifacts(egernDirectory, '.yaml', expectedEgernFiles)
 }
 
@@ -211,20 +176,6 @@ function serializeEgernRuleSet(fields) {
   return `${lines.join('\n')}\n`
 }
 
-function convertRuleObject(rule) {
-  validateRuleObject(rule)
-
-  const lines = []
-  appendRules(lines, 'DOMAIN', rule.domain)
-  appendRules(lines, 'DOMAIN-SUFFIX', rule.domain_suffix)
-  appendRules(lines, 'DOMAIN-KEYWORD', rule.domain_keyword)
-  appendRules(lines, 'DOMAIN-WILDCARD', normalizeList(rule.domain_regex).map(regexToWildcard))
-  for (const cidr of normalizeList(rule.ip_cidr)) {
-    lines.push(`${cidr.includes(':') ? 'IP-CIDR6' : 'IP-CIDR'},${cidr}`)
-  }
-  return lines
-}
-
 function validateRuleObject(rule) {
   const supportedKeys = new Set([
     'domain',
@@ -241,36 +192,9 @@ function validateRuleObject(rule) {
   }
 }
 
-function appendRules(lines, type, values) {
-  for (const value of normalizeList(values)) lines.push(`${type},${value}`)
-}
-
 function normalizeList(value) {
   if (value == null) return []
   return Array.isArray(value) ? value : [value]
-}
-
-function regexToWildcard(pattern) {
-  let wildcard = `${pattern}`
-    .replace(/^\(\^\|\\\.\)/, '*')
-    .replace(/^\^/, '')
-    .replace(/\$$/, '')
-    .replace(/\\\./g, '\u0000')
-    .replace(/\\[dwsS]/g, '*')
-    .replace(/\[[^\]]+\]/g, '*')
-    .replace(/\([^)]*\)/g, '*')
-    .replace(/\.\+|\.\*/g, '*')
-    .replace(/\./g, '*')
-    .replace(/\{[^}]+\}/g, '*')
-    .replace(/[+?|]/g, '*')
-    .replace(/\\(.)/g, '$1')
-    .replace(/\*+/g, '*')
-    .replace(/\u0000/g, '.')
-
-  if (!/[a-z0-9]/i.test(wildcard) || !/^[a-z0-9.*_-]+$/i.test(wildcard)) {
-    throw new Error(`cannot convert domain regex to wildcard: ${pattern} -> ${wildcard}`)
-  }
-  return wildcard
 }
 
 function assertDomainMatch(domains, candidate, expected) {

@@ -46,7 +46,7 @@
       {"type": "ip_cidr", "values": ["45.129.8.190/32", "152.175.36.149/32"], "policy": "VPS管理-亚太"}
     ],
     "ruleSets": [
-      {"tag": "geosite-adblock", "singBoxUrl": "https://raw.githubusercontent.com/lpmasser/sub-store-template/main/rules/hagezi-pro.srs", "artifact": "hagezi-pro", "shadowrocketPolicy": "REJECT", "singBoxDns": "nxdomain"},
+      {"tag": "geosite-adblock", "singBoxUrl": "https://raw.githubusercontent.com/lpmasser/sub-store-template/main/rules/hagezi-pro.srs", "artifact": "hagezi-pro", "egernPolicy": "REJECT", "singBoxDns": "nxdomain"},
       {"tag": "geosite-ai", "singBoxUrl": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/category-ai-!cn.srs", "artifact": "geosite-ai", "policy": "🧠 AI", "phase": "domain"},
       {"tag": "geosite-youtube", "singBoxUrl": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/youtube.srs", "artifact": "geosite-youtube", "policy": "📹 YouTube", "phase": "domain"},
       {"tag": "geosite-google", "singBoxUrl": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/google.srs", "artifact": "geosite-google", "policy": "🍀 Google", "phase": "domain"},
@@ -69,10 +69,7 @@
       {"tag": "geoip-netflix", "singBoxUrl": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/netflix.srs", "artifact": "geoip-netflix", "policy": "🎥 NETFLIX", "phase": "ip"},
       {"tag": "geoip-cn", "singBoxUrl": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/cn.srs", "artifact": "geoip-cn", "policy": "DIRECT", "phase": "ip"}
     ],
-    "ruleBaseUrls": {
-      "shadowrocket": "https://raw.githubusercontent.com/lpmasser/sub-store-template/main/rules/shadowrocket",
-      "egern": "https://raw.githubusercontent.com/lpmasser/sub-store-template/main/rules/egern"
-    },
+    "ruleBaseUrl": "https://raw.githubusercontent.com/lpmasser/sub-store-template/main/rules/egern",
     "final": "🐟 漏网之鱼"
   }
 }

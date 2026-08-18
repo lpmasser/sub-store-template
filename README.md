@@ -6,10 +6,9 @@
 
 - `templates/routing-policy.json`：所有客户端的唯一分流策略源；
 - `templates/sing-box.json`：sing-box `1.13.18` 运行时模板；
-- `templates/shadowrocket.json`：Shadowrocket Clash 兼容模板；
 - `templates/egern.json`：Egern 原生 Profile 模板；
 - `templates/transform.js`：SubStore 共享渲染器；
-- `templates/transform.test.cjs`：三个客户端的本地转换测试。
+- `templates/transform.test.cjs`：两个客户端的本地转换测试。
 
 SubStore 通过 GitHub Raw 读取 JSON 模板和分流策略，Script Operator 使用 `link` 模式读取 `transform.js`。修改模板只在本仓库维护，不向基础设施仓库复制第二份。
 
@@ -25,9 +24,9 @@ Apple 是可切换出口的 selector，因此不进入无条件本地 DNS 范围
 验证：
 
 ```sh
-jq empty templates/*.json
+node -e 'const fs=require("node:fs"); for (const file of fs.readdirSync("templates").filter(name => name.endsWith(".json"))) JSON.parse(fs.readFileSync("templates/"+file))'
 node --check templates/transform.js
-node --test templates/transform.test.cjs
+node templates/transform.test.cjs
 ```
 
 ## HaGeZi Pro
@@ -35,21 +34,20 @@ node --test templates/transform.test.cjs
 - 上游：[HaGeZi DNS Blocklists](https://github.com/hagezi/dns-blocklists)
 - 源格式：[HaGeZi Pro Adblock](https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/pro.txt)
 - sing-box 产物：`rules/hagezi-pro.srs`
-- Shadowrocket 产物：`rules/shadowrocket/hagezi-pro.list`
 - Egern 产物：`rules/egern/hagezi-pro.yaml`
 - 转换器：sing-box `1.13.14`
 - 调度：每日 04:23 UTC，也支持手动运行
 
-工作流下载官方源，拒绝异常缩小的输入，校验锁定版本的 sing-box 压缩包，并从同一份 HaGeZi Pro 内容生成 SRS、Shadowrocket 文本规则与 Egern 原生 YAML 规则。
+工作流下载官方源，拒绝异常缩小的输入，校验锁定版本的 sing-box 压缩包，并从同一份 HaGeZi Pro 内容生成 SRS 与 Egern 原生 YAML 规则。
 
 ## 路由规则
 
-`rules/sources.json` 记录 sing-box SRS 上游。工作流使用 sing-box 反编译这些 SRS，再生成 `rules/shadowrocket/*.list` 与 `rules/egern/*.yaml`。因此三个客户端使用相同规则内容，只保留格式与执行策略差异。
+`rules/sources.json` 记录 sing-box SRS 上游。工作流使用 sing-box 反编译这些 SRS，再生成 `rules/egern/*.yaml`。两个客户端使用相同规则内容，只保留格式与执行策略差异。
 
 `rules/sources.json` 只是格式转换的产物清单，不保存策略组、分流去向或规则顺序。
 
 远程规则使用 `raw.githubusercontent.com` 原始地址。MetaCubeX 的 `sing` 与本仓库的 `main` 分支有意保留，以维持每日规则构建；不额外增加自动改写 commit SHA 的逻辑。仓库测试负责约束 canonical URL、客户端字段和生成结构，每次自动构建产物则由 Git 提交记录实际版本。
 
-sing-box 的 `domain_regex` 在 Shadowrocket 没有等价的域名规则类型，构建器会转换为 `DOMAIN-WILDCARD` 并在日志中报告数量。通配符无法表达字符范围和重复次数，因此这部分规则可能比上游正则稍宽；其他域名与 IP 规则保持原类型。如果上游出现未支持的规则字段，构建会直接失败，不会静默丢弃。
+Egern 原生保留 `domain_regex` 等受支持字段。如果上游出现未支持的规则字段，构建会直接失败，不会静默丢弃。
 
 不要手工编辑生成产物。HaGeZi 源内容使用 [GPL-3.0](https://github.com/hagezi/dns-blocklists/blob/main/LICENSE)；其他规则来源见 `rules/sources.json`，规则内容与误拦反馈仍以上游项目为准。

@@ -1,8 +1,0 @@
-{
-  "_target": "shadowrocket",
-  "mode": "rule",
-  "proxies": [],
-  "proxy-groups": [],
-  "rule-providers": {},
-  "rules": []
-}

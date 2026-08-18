@@ -1,4 +1,4 @@
-// Shared SubStore renderer for sing-box, Shadowrocket and Egern.
+// Shared SubStore renderer for sing-box and Egern.
 
 const template = JSON.parse($files[0])
 const target = template._target || 'sing-box'
@@ -14,10 +14,6 @@ const groups = buildGroups(policy, proxyTags)
 
 if (target === 'sing-box') {
   $content = JSON.stringify(renderSingBox(template, policy, proxies, groups), null, 2)
-} else if (target === 'shadowrocket') {
-  $content = ProxyUtils.yaml.safeDump(renderShadowrocket(template, policy, proxies, groups), {
-    lineWidth: -1,
-  })
 } else if (target === 'egern') {
   $content = ProxyUtils.yaml.safeDump(renderEgern(template, policy, proxies, groups), {
     lineWidth: -1,
@@ -36,11 +32,10 @@ async function loadProxies(clientTarget, collection) {
     })
   }
 
-  const platform = clientTarget === 'egern' ? 'Egern' : 'Shadowrocket'
   const output = await produceArtifact({
     name: collection,
     type: 'collection',
-    platform,
+    platform: 'Egern',
     produceOpts: { prettyYaml: true },
   })
   return ProxyUtils.yaml.safeLoad(output).proxies || []
@@ -48,7 +43,6 @@ async function loadProxies(clientTarget, collection) {
 
 function getProxyName(clientTarget, proxy) {
   if (clientTarget === 'sing-box') return proxy.tag
-  if (clientTarget === 'shadowrocket') return proxy.name
   const definition = Object.values(proxy)[0]
   if (!definition?.name) throw new Error(`Egern 节点缺少名称: ${JSON.stringify(proxy)}`)
   return definition.name
@@ -184,70 +178,6 @@ function renderSingBoxRules(candidate) {
   return rules
 }
 
-function renderShadowrocket(config, candidate, nodes, groups) {
-  config.proxies = nodes
-  config['proxy-groups'] = groups.map(group => {
-    const members = group.members.map(member => mapPolicy(member, 'shadowrocket', candidate))
-    const selected = group.default
-      ? mapPolicy(group.default, 'shadowrocket', candidate)
-      : undefined
-    return {
-      name: group.tag,
-      type: 'select',
-      proxies: selected ? [selected, ...members.filter(member => member !== selected)] : members,
-      ...(selected ? { 'policy-select-name': selected } : {}),
-    }
-  })
-
-  config['rule-providers'] = Object.fromEntries(
-    candidate.routing.ruleSets.map(ruleSet => [
-      ruleSet.tag,
-      {
-        type: 'http',
-        behavior: 'classical',
-        format: 'text',
-        url: `${candidate.routing.ruleBaseUrls.shadowrocket}/${ruleSet.artifact}.list`,
-        path: `./rule-providers/${ruleSet.artifact}.list`,
-        interval: 86400,
-      },
-    ]),
-  )
-
-  const rules = [
-    'IP-CIDR,127.0.0.0/8,DIRECT,no-resolve',
-    'IP-CIDR,10.0.0.0/8,DIRECT,no-resolve',
-    'IP-CIDR,172.16.0.0/12,DIRECT,no-resolve',
-    'IP-CIDR,192.168.0.0/16,DIRECT,no-resolve',
-    'IP-CIDR,169.254.0.0/16,DIRECT,no-resolve',
-    'IP-CIDR6,::1/128,DIRECT,no-resolve',
-    'IP-CIDR6,fc00::/7,DIRECT,no-resolve',
-    'IP-CIDR6,fe80::/10,DIRECT,no-resolve',
-  ]
-
-  for (const rule of candidate.routing.inline) {
-    const type = {
-      domain: 'DOMAIN',
-      domain_suffix: 'DOMAIN-SUFFIX',
-      ip_cidr: 'IP-CIDR',
-    }[rule.type]
-    const destination = mapPolicy(rule.policy, 'shadowrocket', candidate)
-    for (const value of rule.values) {
-      rules.push(`${type},${value},${destination}${rule.type === 'ip_cidr' ? ',no-resolve' : ''}`)
-    }
-  }
-
-  for (const ruleSet of candidate.routing.ruleSets) {
-    const destination = ruleSet.shadowrocketPolicy || (
-      ruleSet.policy ? mapPolicy(ruleSet.policy, 'shadowrocket', candidate) : undefined
-    )
-    if (destination) rules.push(`RULE-SET,${ruleSet.tag},${destination}`)
-  }
-
-  rules.push(`MATCH,${mapPolicy(candidate.routing.final, 'shadowrocket', candidate)}`)
-  config.rules = rules
-  return config
-}
-
 function renderEgern(config, candidate, nodes, groups) {
   config.proxies = nodes
   config.policy_groups = groups.map(group => ({
@@ -276,13 +206,13 @@ function renderEgern(config, candidate, nodes, groups) {
   }
 
   for (const ruleSet of candidate.routing.ruleSets) {
-    const destination = ruleSet.shadowrocketPolicy || (
+    const destination = ruleSet.egernPolicy || (
       ruleSet.policy ? mapPolicy(ruleSet.policy, 'egern', candidate) : undefined
     )
     if (!destination) continue
     rules.push({
       rule_set: {
-        match: `${candidate.routing.ruleBaseUrls.egern}/${ruleSet.artifact}.yaml`,
+        match: `${candidate.routing.ruleBaseUrl}/${ruleSet.artifact}.yaml`,
         policy: destination,
         update_interval: 86400,
       },

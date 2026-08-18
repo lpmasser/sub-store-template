@@ -11,7 +11,6 @@ const policy = JSON.parse(fs.readFileSync(path.join(directory, 'routing-policy.j
 const ruleSources = JSON.parse(fs.readFileSync(path.join(directory, '..', 'rules', 'sources.json'), 'utf8'))
 const templates = {
   'sing-box': JSON.parse(fs.readFileSync(path.join(directory, 'sing-box.json'), 'utf8')),
-  shadowrocket: JSON.parse(fs.readFileSync(path.join(directory, 'shadowrocket.json'), 'utf8')),
   egern: JSON.parse(fs.readFileSync(path.join(directory, 'egern.json'), 'utf8')),
 }
 const transformSource = fs.readFileSync(path.join(directory, 'transform.js'), 'utf8')
@@ -70,15 +69,7 @@ async function render(target) {
           })),
         })
       }
-      return JSON.stringify({
-        proxies: proxyTags.map((name, index) => ({
-          name,
-          type: 'vless',
-          server: `node-${index + 1}.example.com`,
-          port: 443,
-          uuid: 'test-only',
-        })),
-      })
+      throw new Error(`unexpected platform: ${request.platform}`)
     },
     {
       yaml: {
@@ -105,7 +96,7 @@ function assertDefaults(groups, tagKey, membersKey, defaultKey, directTag) {
   assert.equal(apple[defaultKey], directTag)
 }
 
-test('uses the same canonical upstream for every generated client rule artifact', () => {
+test('uses the same canonical upstream for both client rule formats', () => {
   const sources = new Map(ruleSources.ruleSets.map(ruleSet => [ruleSet.artifact, ruleSet.source]))
   for (const ruleSet of policy.routing.ruleSets) {
     assert.match(ruleSet.singBoxUrl, /^https:\/\/raw\.githubusercontent\.com\//)
@@ -114,8 +105,7 @@ test('uses the same canonical upstream for every generated client rule artifact'
       assert.equal(ruleSet.singBoxUrl, sources.get(ruleSet.artifact))
     }
   }
-  assert.match(policy.routing.ruleBaseUrls.shadowrocket, /^https:\/\/raw\.githubusercontent\.com\//)
-  assert.match(policy.routing.ruleBaseUrls.egern, /^https:\/\/raw\.githubusercontent\.com\//)
+  assert.match(policy.routing.ruleBaseUrl, /^https:\/\/raw\.githubusercontent\.com\//)
 })
 
 test('generated Egern rule sets use native fields and valid YAML scalars', () => {
@@ -270,41 +260,6 @@ test('renders the sing-box profile from eight ordinary nodes', async () => {
   )
   assert.deepEqual(config.route.default_domain_resolver, { server: 'public' })
   assert.equal(config.route.final, '🐟 漏网之鱼')
-})
-
-test('renders the matching Shadowrocket profile and remote rule providers', async () => {
-  const config = await render('shadowrocket')
-  const groups = config['proxy-groups']
-  const providers = config['rule-providers']
-
-  assert.equal(config.proxies.length, 8)
-  assert.equal(groups.length, 21)
-  assert.ok(groups.every(group => group.type === 'select'))
-  assert.ok(config.proxies.every(proxy => !Object.hasOwn(proxy, 'dialer-proxy')))
-  assertDefaults(groups, 'name', 'proxies', 'policy-select-name', 'DIRECT')
-  assert.equal(Object.keys(providers).length, 22)
-  assert.deepEqual(Object.keys(providers), policy.routing.ruleSets.map(ruleSet => ruleSet.tag))
-  assert.ok(Object.values(providers).every(provider => (
-    provider.type === 'http' &&
-    provider.behavior === 'classical' &&
-    provider.format === 'text' &&
-    provider.url.startsWith('https://raw.githubusercontent.com/') &&
-    !provider.url.includes('gh-proxy.com')
-  )))
-  const serialized = JSON.stringify(config)
-  for (const field of [
-    'default_interface_address',
-    'download_detour',
-    'http_client',
-    'http_clients',
-    'store_fakeip',
-    'no_drop',
-  ]) {
-    assert.ok(!serialized.includes(field), `Shadowrocket must not contain ${field}`)
-  }
-  assert.equal(config.rules.length, 49)
-  assert.ok(config.rules.includes('RULE-SET,geosite-adblock,REJECT'))
-  assert.equal(config.rules.at(-1), 'MATCH,🐟 漏网之鱼')
 })
 
 test('renders a native Egern profile with matching groups and remote rule sets', async () => {
