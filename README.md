@@ -13,6 +13,7 @@
 SubStore 通过 GitHub Raw 读取 JSON 模板和分流策略，Script Operator 使用 `link` 模式读取 `transform.js`。修改模板只在本仓库维护，不向基础设施仓库复制第二份。
 
 共享分组采用“业务策略 → 稳定出口 → 协议节点”两级选择结构。业务策略完整保留；出口使用普通 selector，VLESS 为默认、Hysteria2 为手动备用，不进行周期性 URLTest。
+美国与亚太 VPS 管理流量使用独立策略组，分别默认经 DMIT Pro 和 ISIF JP 中转，并保留手动直连选项。
 
 两个客户端还可以通过 `routing-policy.json` 的 `privateRelays` 引用 SubStore 中的私密本地文件，生成不把凭据写入 Git 的链式出站。当前美国家宽的第二条路径先使用 DMIT EB VLESS，再连接私密文件中的 Vircs Shadowsocks 上游：sing-box 渲染为 `detour`，Shadowrocket Clash YAML 渲染为 `dialer-proxy`。
 

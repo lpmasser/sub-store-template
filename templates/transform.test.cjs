@@ -113,7 +113,8 @@ const currentProxyTags = [
 const strategyTags = [
   '🚀 默认代理',
   '🧠 AI',
-  '🧩 代理补充',
+  'VPS管理-美国',
+  'VPS管理-亚太',
   '🍀 Google',
   '📹 YouTube',
   '🎥 NETFLIX',
@@ -149,6 +150,9 @@ test('renders the complete sing-box strategy and egress graph without URLTest', 
   assert.ok(groups.every(group => group.type === 'selector'))
   assert.equal(groups.find(group => group.tag === '🚀 默认代理').default, '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group.tag === '🧠 AI').default, '🏠 美国家宽')
+  assert.equal(groups.find(group => group.tag === 'VPS管理-美国').default, '🇺🇸 DMIT Pro')
+  assert.equal(groups.find(group => group.tag === 'VPS管理-亚太').default, '🇯🇵 ISIF JP')
+  assert.ok(!groupTags.has('🧩 代理补充'))
   for (const [tag, defaultNode] of egressDefaults) {
     assert.equal(groups.find(group => group.tag === tag).default, defaultNode)
   }
@@ -158,6 +162,25 @@ test('renders the complete sing-box strategy and egress graph without URLTest', 
     result.config.route.rules.filter(rule => rule.rule_set === 'geosite-adblock').length,
     0,
   )
+  assert.deepEqual(
+    result.config.route.rules.find(rule => rule.domain?.includes('ssh.git.eloyzh.de')),
+    { domain: ['ssh.git.eloyzh.de'], outbound: 'VPS管理-美国' },
+  )
+  assert.deepEqual(
+    result.config.route.rules.find(rule => rule.ip_cidr?.includes('152.53.81.181/32')),
+    {
+      ip_cidr: ['154.21.86.201/32', '154.17.227.251/32', '152.53.81.181/32', '23.81.118.181/32'],
+      outbound: 'VPS管理-美国',
+    },
+  )
+  assert.deepEqual(
+    result.config.route.rules.find(rule => rule.ip_cidr?.includes('45.129.8.190/32')),
+    {
+      ip_cidr: ['45.129.8.190/32', '152.175.36.149/32'],
+      outbound: 'VPS管理-亚太',
+    },
+  )
+  assert.ok(!JSON.stringify(result.config.route.rules).includes('46.3.43.12'))
   assert.deepEqual(
     result.config.route.rule_set.map(ruleSet => ruleSet.tag),
     policy.routing.ruleSets.map(ruleSet => ruleSet.tag),
@@ -181,7 +204,7 @@ test('renders one complete Shadowrocket profile with the same selectors and REJE
 
   assertValidGroups(result.config, 'shadowrocket')
   assert.equal(result.config.proxies.length, currentProxyTags.length + 1)
-  assert.equal(groups.length, 20)
+  assert.equal(groups.length, 21)
   assert.equal(groups.filter(group => group.type === 'url-test').length, 0)
   const vircsEBRelay = result.config.proxies.find(proxy => proxy.name === vircsEBRelayTag)
   assert.deepEqual(vircsEBRelay, {
@@ -201,6 +224,9 @@ test('renders one complete Shadowrocket profile with the same selectors and REJE
     '🇺🇸 DMIT Pro',
   )
   assert.equal(groups.find(group => group.name === '🧠 AI')['policy-select-name'], '🏠 美国家宽')
+  assert.equal(groups.find(group => group.name === 'VPS管理-美国')['policy-select-name'], '🇺🇸 DMIT Pro')
+  assert.equal(groups.find(group => group.name === 'VPS管理-亚太')['policy-select-name'], '🇯🇵 ISIF JP')
+  assert.ok(!groupTags.has('🧩 代理补充'))
   for (const [tag, defaultNode] of egressDefaults) {
     const group = groups.find(candidate => candidate.name === tag)
     assert.equal(group['policy-select-name'], defaultNode)
@@ -223,8 +249,13 @@ test('renders one complete Shadowrocket profile with the same selectors and REJE
     })
   }
 
-  assert.equal(result.config.rules.length, 48)
+  assert.equal(result.config.rules.length, 49)
   assert.equal(result.config.rules.at(-1), `MATCH,${policy.routing.final}`)
+  assert.ok(result.config.rules.includes('DOMAIN,ssh.git.eloyzh.de,VPS管理-美国'))
+  assert.ok(result.config.rules.includes('IP-CIDR,152.53.81.181/32,VPS管理-美国,no-resolve'))
+  assert.ok(result.config.rules.includes('IP-CIDR,45.129.8.190/32,VPS管理-亚太,no-resolve'))
+  assert.ok(result.config.rules.includes('IP-CIDR,152.175.36.149/32,VPS管理-亚太,no-resolve'))
+  assert.ok(!result.config.rules.some(rule => rule.includes('46.3.43.12')))
 
   const renderedRuleSets = result.config.rules
     .filter(rule => rule.startsWith('RULE-SET,'))
