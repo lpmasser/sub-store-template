@@ -10,11 +10,10 @@
       {"clash_mode": "direct", "server": "local"},
       {"clash_mode": "global", "server": "fakeip"},
       {"domain_suffix": ["services.googleapis.cn", "googleapis.cn", "xn--ngstr-lra8j.com"], "server": "foreign"},
-      {"rule_set": ["geosite-cn", "geosite-steamcn", "geosite-apple"], "server": "local"},
-      {"query_type": ["A", "AAAA"], "server": "fakeip", "rewrite_ttl": 1}
+      {"query_type": ["A", "AAAA"], "server": "fakeip", "rewrite_ttl": 60}
     ],
     "final": "foreign",
-    "strategy": "ipv4_only",
+    "strategy": "prefer_ipv4",
     "independent_cache": true,
     "reverse_mapping": true
   },
@@ -23,6 +22,16 @@
   ],
   "route": {
     "rules": [
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {"inbound": "tun-in", "clash_mode": "rule", "ip_version": 6, "rule_set": "geoip-cn"},
+          {"default_interface_address": "2000::/3", "invert": true}
+        ],
+        "action": "reject",
+        "no_drop": true
+      },
       {"action": "sniff", "sniffer": ["http", "tls", "quic", "dns"]},
       {"type": "logical", "mode": "or", "rules": [{"port": 53}, {"protocol": "dns"}], "action": "hijack-dns"},
       {"ip_is_private": true, "outbound": "🎯 直连"},
@@ -59,7 +68,8 @@
   ],
   "experimental": {
     "cache_file": {
-      "enabled": true
+      "enabled": true,
+      "store_fakeip": true
     },
     "clash_api": {
       "secret": "",

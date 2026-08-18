@@ -101,17 +101,47 @@ function renderSingBox(config, candidate, nodes, groups) {
       action: 'predefined',
       rcode: 'NXDOMAIN',
     }))
-  config.dns.rules = [...dnsBlockRules, ...(config.dns.rules || [])]
+  const dnsRules = config.dns.rules || []
+  const localDnsScope = buildLocalDnsScope(candidate)
+  const foreignRuleIndex = dnsRules.findIndex(rule => rule.server === 'foreign')
+  dnsRules.splice(
+    foreignRuleIndex + 1,
+    0,
+    {
+      type: 'logical',
+      mode: 'and',
+      rules: [
+        { query_type: ['AAAA', 'HTTPS'] },
+        { default_interface_address: '2000::/3', invert: true },
+        { type: 'logical', mode: 'or', rules: localDnsScope },
+      ],
+      action: 'predefined',
+      rcode: 'NOERROR',
+    },
+    { type: 'logical', mode: 'or', rules: localDnsScope, server: 'local' },
+  )
+  config.dns.rules = [...dnsBlockRules, ...dnsRules]
   config.route.rules = [...(config.route.rules || []), ...renderSingBoxRules(candidate)]
   config.route.rule_set = candidate.routing.ruleSets.map(ruleSet => ({
     tag: ruleSet.tag,
     type: 'remote',
     format: 'binary',
     url: ruleSet.singBoxUrl,
-    download_detour: candidate.singBoxDirectTag,
+    download_detour: candidate.routing.downloadDetour,
   }))
   config.route.final = mapPolicy(candidate.routing.final, 'sing-box', candidate)
   return config
+}
+
+function buildLocalDnsScope(candidate) {
+  const rules = [{ rule_set: candidate.dns.localRuleSets }]
+  for (const type of ['domain', 'domain_suffix', 'domain_keyword', 'domain_regex']) {
+    const values = candidate.routing.inline
+      .filter(rule => rule.policy === candidate.directPolicy && rule.type === type)
+      .flatMap(rule => rule.values)
+    if (values.length > 0) rules.push({ [type]: unique(values) })
+  }
+  return rules
 }
 
 function renderSingBoxRules(candidate) {
