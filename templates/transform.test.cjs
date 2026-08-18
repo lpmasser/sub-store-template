@@ -12,6 +12,7 @@ const ruleSources = JSON.parse(fs.readFileSync(path.join(directory, '..', 'rules
 const templates = {
   'sing-box': JSON.parse(fs.readFileSync(path.join(directory, 'sing-box.json'), 'utf8')),
   shadowrocket: JSON.parse(fs.readFileSync(path.join(directory, 'shadowrocket.json'), 'utf8')),
+  egern: JSON.parse(fs.readFileSync(path.join(directory, 'egern.json'), 'utf8')),
 }
 const transformSource = fs.readFileSync(path.join(directory, 'transform.js'), 'utf8')
 
@@ -29,6 +30,14 @@ const householdNodes = [
   '[自建][家宽拼车]Vircs-SS[经DMIT Pro]',
   '[自建][家宽拼车]Vircs-SS[经DMIT EB]',
 ]
+const egernRuleFields = new Set([
+  'domain_set',
+  'domain_suffix_set',
+  'domain_keyword_set',
+  'domain_regex_set',
+  'ip_cidr_set',
+  'ip_cidr6_set',
+])
 
 async function render(target) {
   const execute = new AsyncFunction(
@@ -48,6 +57,18 @@ async function render(target) {
       }
       if (request.platform === 'sing-box') {
         return proxyTags.map(tag => ({ tag, type: 'vless' }))
+      }
+      if (request.platform === 'Egern') {
+        return JSON.stringify({
+          proxies: proxyTags.map((name, index) => ({
+            vless: {
+              name,
+              server: `node-${index + 1}.example.com`,
+              port: 443,
+              user_id: 'test-only',
+            },
+          })),
+        })
       }
       return JSON.stringify({
         proxies: proxyTags.map((name, index) => ({
@@ -84,16 +105,50 @@ function assertDefaults(groups, tagKey, membersKey, defaultKey, directTag) {
   assert.equal(apple[defaultKey], directTag)
 }
 
-test('uses the same canonical upstream for sing-box and generated Shadowrocket rules', () => {
-  const sources = new Map(ruleSources.ruleSets.map(ruleSet => [ruleSet.output, ruleSet.source]))
+test('uses the same canonical upstream for every generated client rule artifact', () => {
+  const sources = new Map(ruleSources.ruleSets.map(ruleSet => [ruleSet.artifact, ruleSet.source]))
   for (const ruleSet of policy.routing.ruleSets) {
     assert.match(ruleSet.singBoxUrl, /^https:\/\/raw\.githubusercontent\.com\//)
     assert.ok(!ruleSet.singBoxUrl.includes('gh-proxy.com'))
     if (ruleSet.tag !== 'geosite-adblock') {
-      assert.equal(ruleSet.singBoxUrl, sources.get(ruleSet.shadowrocketFile))
+      assert.equal(ruleSet.singBoxUrl, sources.get(ruleSet.artifact))
     }
   }
-  assert.match(policy.routing.shadowrocketRuleBaseUrl, /^https:\/\/raw\.githubusercontent\.com\//)
+  assert.match(policy.routing.ruleBaseUrls.shadowrocket, /^https:\/\/raw\.githubusercontent\.com\//)
+  assert.match(policy.routing.ruleBaseUrls.egern, /^https:\/\/raw\.githubusercontent\.com\//)
+})
+
+test('generated Egern rule sets use native fields and valid YAML scalars', () => {
+  const expectedArtifacts = new Set(policy.routing.ruleSets.map(ruleSet => ruleSet.artifact))
+  const egernDirectory = path.join(directory, '..', 'rules', 'egern')
+  const actualArtifacts = new Set(
+    fs.readdirSync(egernDirectory)
+      .filter(file => file.endsWith('.yaml'))
+      .map(file => file.replace(/\.yaml$/, '')),
+  )
+  assert.deepEqual(actualArtifacts, expectedArtifacts)
+
+  for (const artifact of expectedArtifacts) {
+    const lines = fs.readFileSync(path.join(egernDirectory, `${artifact}.yaml`), 'utf8')
+      .split(/\r?\n/)
+    let currentField
+    let values = 0
+    for (const line of lines) {
+      if (line === '' || line.startsWith('#')) continue
+      if (line === 'no_resolve: true') continue
+      const field = /^([a-z0-9_]+):$/.exec(line)
+      if (field) {
+        assert.ok(egernRuleFields.has(field[1]), `${artifact} has unsupported field ${field[1]}`)
+        currentField = field[1]
+        continue
+      }
+      const item = /^  - (.+)$/.exec(line)
+      assert.ok(item && currentField, `${artifact} has malformed YAML line: ${line}`)
+      assert.equal(typeof JSON.parse(item[1]), 'string')
+      values += 1
+    }
+    assert.ok(values > 0, `${artifact} must contain rules`)
+  }
 })
 
 test('renders the sing-box profile from eight ordinary nodes', async () => {
@@ -250,4 +305,36 @@ test('renders the matching Shadowrocket profile and remote rule providers', asyn
   assert.equal(config.rules.length, 49)
   assert.ok(config.rules.includes('RULE-SET,geosite-adblock,REJECT'))
   assert.equal(config.rules.at(-1), 'MATCH,🐟 漏网之鱼')
+})
+
+test('renders a native Egern profile with matching groups and remote rule sets', async () => {
+  const config = await render('egern')
+  const groups = config.policy_groups.map(group => group.select)
+  const remoteRules = config.rules.filter(rule => rule.rule_set).map(rule => rule.rule_set)
+
+  assert.equal(config.proxies.length, 8)
+  assert.ok(config.proxies.every(proxy => Object.values(proxy)[0].name))
+  assert.ok(config.proxies.every(proxy => !Object.hasOwn(Object.values(proxy)[0], 'prev_hop')))
+  assert.equal(groups.length, 21)
+  assert.ok(config.policy_groups.every(group => Object.keys(group).join() === 'select'))
+  assert.equal(groups.find(group => group.name === '🚀 默认代理').policies[0], '🇺🇸 DMIT Pro')
+  assert.equal(groups.find(group => group.name === '🧠 AI').policies[0], '🏠 美国家宽')
+  assert.equal(groups.find(group => group.name === 'VPS管理-美国').policies[0], '🇺🇸 DMIT Pro')
+  assert.equal(groups.find(group => group.name === 'VPS管理-亚太').policies[0], '🇯🇵 ISIF JP')
+  assert.deepEqual(groups.find(group => group.name === '🏠 美国家宽').policies, householdNodes)
+  assert.equal(groups.find(group => group.name === '🍏 Apple').policies[0], 'DIRECT')
+
+  assert.equal(remoteRules.length, 22)
+  assert.ok(remoteRules.every(rule => (
+    rule.match.startsWith('https://raw.githubusercontent.com/') &&
+    rule.match.endsWith('.yaml') &&
+    !rule.match.includes('gh-proxy.com') &&
+    rule.update_interval === 86400
+  )))
+  assert.equal(remoteRules[0].policy, 'REJECT')
+  assert.equal(config.rules.length, 49)
+  assert.deepEqual(config.rules[0], {
+    ip_cidr: { match: '127.0.0.0/8', policy: 'DIRECT', no_resolve: true },
+  })
+  assert.deepEqual(config.rules.at(-1), { default: { policy: '🐟 漏网之鱼' } })
 })

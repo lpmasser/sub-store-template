@@ -78,7 +78,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          git add -- rules/hagezi-pro.srs rules/shadowrocket
+          git add -- rules/hagezi-pro.srs rules/shadowrocket rules/egern
           if git diff --cached --quiet; then
             echo "Rule artifacts are already current"
             exit 0

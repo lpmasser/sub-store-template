@@ -12,12 +12,14 @@ const generatedHeader = '# Generated file. Do not edit.\n'
 const temporaryDirectory = await mkdtemp(join(tmpdir(), 'sub-store-rules-'))
 const temporaryOutputDirectory = join(temporaryDirectory, 'output')
 const temporaryShadowrocketDirectory = join(temporaryOutputDirectory, 'shadowrocket')
+const temporaryEgernDirectory = join(temporaryOutputDirectory, 'egern')
 
 try {
   validateManifest(manifest)
   await mkdir(temporaryShadowrocketDirectory, { recursive: true })
+  await mkdir(temporaryEgernDirectory, { recursive: true })
   await buildHagezi()
-  for (const ruleSet of manifest.ruleSets) await buildShadowrocketRuleSet(ruleSet)
+  for (const ruleSet of manifest.ruleSets) await buildClientRuleSet(ruleSet)
   await publishArtifacts()
 } finally {
   await rm(temporaryDirectory, { recursive: true, force: true })
@@ -29,14 +31,14 @@ function validateManifest(candidate) {
   }
   const outputs = new Set()
   for (const ruleSet of candidate.ruleSets) {
-    if (!/^[a-z0-9-]+\.list$/.test(ruleSet.output || '')) {
-      throw new Error(`invalid output name: ${ruleSet.output}`)
+    if (!/^[a-z0-9-]+$/.test(ruleSet.artifact || '')) {
+      throw new Error(`invalid artifact name: ${ruleSet.artifact}`)
     }
     if (!/^https:\/\//.test(ruleSet.source || '')) {
-      throw new Error(`invalid source URL for ${ruleSet.output}`)
+      throw new Error(`invalid source URL for ${ruleSet.artifact}`)
     }
-    if (outputs.has(ruleSet.output)) throw new Error(`duplicate output: ${ruleSet.output}`)
-    outputs.add(ruleSet.output)
+    if (outputs.has(ruleSet.artifact)) throw new Error(`duplicate artifact: ${ruleSet.artifact}`)
+    outputs.add(ruleSet.artifact)
   }
 }
 
@@ -83,34 +85,45 @@ async function buildHagezi() {
     shadowrocketPath,
     `${generatedHeader}# Source: ${hageziUrl}\n${uniqueDomains.map(domain => `DOMAIN-SUFFIX,${domain}`).join('\n')}\n`,
   )
+  await writeFile(
+    join(temporaryEgernDirectory, 'hagezi-pro.yaml'),
+    `${generatedHeader}# Source: ${hageziUrl}\n${serializeEgernRuleSet({
+      domain_suffix_set: uniqueDomains,
+    })}`,
+  )
   console.log(`built hagezi-pro: ${uniqueDomains.length} domains`)
 }
 
-async function buildShadowrocketRuleSet(ruleSet) {
-  const baseName = ruleSet.output.replace(/\.list$/, '')
-  const binaryPath = join(temporaryDirectory, `${baseName}.srs`)
-  const sourcePath = join(temporaryDirectory, `${baseName}.json`)
+async function buildClientRuleSet(ruleSet) {
+  const binaryPath = join(temporaryDirectory, `${ruleSet.artifact}.srs`)
+  const sourcePath = join(temporaryDirectory, `${ruleSet.artifact}.json`)
   await writeFile(binaryPath, await download(ruleSet.source))
   runSingBox(['rule-set', 'decompile', '--output', sourcePath, binaryPath])
 
   const source = JSON.parse(await readFile(sourcePath, 'utf8'))
   if (!Array.isArray(source.rules) || source.rules.length === 0) {
-    throw new Error(`${ruleSet.output} decompiled to an empty rule-set`)
+    throw new Error(`${ruleSet.artifact} decompiled to an empty rule-set`)
   }
   const regexCount = source.rules.reduce(
     (count, rule) => count + normalizeList(rule.domain_regex).length,
     0,
   )
   const lines = uniq(source.rules.flatMap(convertRuleObject))
-  if (lines.length === 0) throw new Error(`${ruleSet.output} produced no Shadowrocket rules`)
+  if (lines.length === 0) throw new Error(`${ruleSet.artifact} produced no client rules`)
 
-  const outputPath = join(temporaryShadowrocketDirectory, ruleSet.output)
+  const outputPath = join(temporaryShadowrocketDirectory, `${ruleSet.artifact}.list`)
   await writeFile(
     outputPath,
     `${generatedHeader}# Source: ${ruleSet.source}\n${lines.join('\n')}\n`,
   )
+  await writeFile(
+    join(temporaryEgernDirectory, `${ruleSet.artifact}.yaml`),
+    `${generatedHeader}# Source: ${ruleSet.source}\n${serializeEgernRuleSet(
+      collectEgernRuleSet(source.rules),
+    )}`,
+  )
   console.log(
-    `built ${ruleSet.output}: ${lines.length} rules` +
+    `built ${ruleSet.artifact}: ${lines.length} rules` +
     (regexCount > 0 ? ` (${regexCount} domain regex converted to wildcard)` : ''),
   )
 }
@@ -118,16 +131,28 @@ async function buildShadowrocketRuleSet(ruleSet) {
 async function publishArtifacts() {
   const rulesDirectory = join(repositoryRoot, 'rules')
   const shadowrocketDirectory = join(rulesDirectory, 'shadowrocket')
-  const expectedFiles = new Set([
+  const egernDirectory = join(rulesDirectory, 'egern')
+  const expectedShadowrocketFiles = new Set([
     'hagezi-pro.list',
-    ...manifest.ruleSets.map(ruleSet => ruleSet.output),
+    ...manifest.ruleSets.map(ruleSet => `${ruleSet.artifact}.list`),
+  ])
+  const expectedEgernFiles = new Set([
+    'hagezi-pro.yaml',
+    ...manifest.ruleSets.map(ruleSet => `${ruleSet.artifact}.yaml`),
   ])
 
   await mkdir(shadowrocketDirectory, { recursive: true })
-  for (const fileName of expectedFiles) {
+  await mkdir(egernDirectory, { recursive: true })
+  for (const fileName of expectedShadowrocketFiles) {
     await copyFile(
       join(temporaryShadowrocketDirectory, fileName),
       join(shadowrocketDirectory, fileName),
+    )
+  }
+  for (const fileName of expectedEgernFiles) {
+    await copyFile(
+      join(temporaryEgernDirectory, fileName),
+      join(egernDirectory, fileName),
     )
   }
   await copyFile(
@@ -135,15 +160,72 @@ async function publishArtifacts() {
     join(rulesDirectory, 'hagezi-pro.srs'),
   )
 
-  for (const entry of await readdir(shadowrocketDirectory, { withFileTypes: true })) {
-    if (entry.isFile() && entry.name.endsWith('.list') && !expectedFiles.has(entry.name)) {
-      await unlink(join(shadowrocketDirectory, entry.name))
+  await removeStaleArtifacts(shadowrocketDirectory, '.list', expectedShadowrocketFiles)
+  await removeStaleArtifacts(egernDirectory, '.yaml', expectedEgernFiles)
+}
+
+async function removeStaleArtifacts(directory, extension, expectedFiles) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name.endsWith(extension) && !expectedFiles.has(entry.name)) {
+      await unlink(join(directory, entry.name))
       console.log(`removed stale artifact: ${entry.name}`)
     }
   }
 }
 
+function collectEgernRuleSet(rules) {
+  const fields = {
+    domain_set: [],
+    domain_suffix_set: [],
+    domain_keyword_set: [],
+    domain_regex_set: [],
+    ip_cidr_set: [],
+    ip_cidr6_set: [],
+  }
+
+  for (const rule of rules) {
+    validateRuleObject(rule)
+    fields.domain_set.push(...normalizeList(rule.domain))
+    fields.domain_suffix_set.push(...normalizeList(rule.domain_suffix))
+    fields.domain_keyword_set.push(...normalizeList(rule.domain_keyword))
+    fields.domain_regex_set.push(...normalizeList(rule.domain_regex))
+    for (const cidr of normalizeList(rule.ip_cidr)) {
+      fields[cidr.includes(':') ? 'ip_cidr6_set' : 'ip_cidr_set'].push(cidr)
+    }
+  }
+
+  return Object.fromEntries(
+    Object.entries(fields)
+      .map(([key, values]) => [key, uniq(values)])
+      .filter(([, values]) => values.length > 0),
+  )
+}
+
+function serializeEgernRuleSet(fields) {
+  const lines = []
+  if (fields.ip_cidr_set || fields.ip_cidr6_set) lines.push('no_resolve: true')
+  for (const [key, values] of Object.entries(fields)) {
+    lines.push(`${key}:`)
+    for (const value of values) lines.push(`  - ${JSON.stringify(`${value}`)}`)
+  }
+  return `${lines.join('\n')}\n`
+}
+
 function convertRuleObject(rule) {
+  validateRuleObject(rule)
+
+  const lines = []
+  appendRules(lines, 'DOMAIN', rule.domain)
+  appendRules(lines, 'DOMAIN-SUFFIX', rule.domain_suffix)
+  appendRules(lines, 'DOMAIN-KEYWORD', rule.domain_keyword)
+  appendRules(lines, 'DOMAIN-WILDCARD', normalizeList(rule.domain_regex).map(regexToWildcard))
+  for (const cidr of normalizeList(rule.ip_cidr)) {
+    lines.push(`${cidr.includes(':') ? 'IP-CIDR6' : 'IP-CIDR'},${cidr}`)
+  }
+  return lines
+}
+
+function validateRuleObject(rule) {
   const supportedKeys = new Set([
     'domain',
     'domain_suffix',
@@ -157,16 +239,6 @@ function convertRuleObject(rule) {
   if (unknownKeys.length > 0) {
     throw new Error(`unsupported sing-box rule fields: ${unknownKeys.join(', ')}`)
   }
-
-  const lines = []
-  appendRules(lines, 'DOMAIN', rule.domain)
-  appendRules(lines, 'DOMAIN-SUFFIX', rule.domain_suffix)
-  appendRules(lines, 'DOMAIN-KEYWORD', rule.domain_keyword)
-  appendRules(lines, 'DOMAIN-WILDCARD', normalizeList(rule.domain_regex).map(regexToWildcard))
-  for (const cidr of normalizeList(rule.ip_cidr)) {
-    lines.push(`${cidr.includes(':') ? 'IP-CIDR6' : 'IP-CIDR'},${cidr}`)
-  }
-  return lines
 }
 
 function appendRules(lines, type, values) {
