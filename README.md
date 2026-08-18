@@ -19,6 +19,8 @@ SubStore 通过 GitHub Raw 读取 JSON 模板和分流策略，Script Operator �
 
 sing-box 客户端保留 IPv4/IPv6 双栈 TUN，并按物理默认接口是否具有 `2000::/3` 地址处理本地解析范围：无公网 IPv6 时，AAAA/HTTPS 返回空的 `NOERROR` 响应，规则模式下来自 TUN 的国内字面量 IPv6 在 sniff 前快速拒绝；direct/global 模式保持原语义。`default_interface_address` 反映平台报告的默认接口，源码不保证自动排除 TUN；目前只能确认 SFM 的 direct dial 绑定 `en0`，真 IPv6 网络恢复行为仍需在 macOS 客户端实测。该处理基于已确认存在绕过系统 DNS 的字面量 IPv6，不把具体应用调用链写成确定根因。
 
+Apple 是可切换出口的 selector，因此不进入无条件本地 DNS 范围。规则模式下 Apple 的 A/AAAA 使用通用 FakeIP，HTTPS 单独返回 `NOERROR` NODATA，避免 SVCB/HTTPS 提示绕开 selector；默认选择直连时由 `route.default_domain_resolver` 解析，切换为代理时保留域名交给代理出口。iCloud、App Store、推送和中国区 CDN 仍需在 macOS 客户端实测。
+
 验证：
 
 ```sh

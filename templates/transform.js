@@ -119,6 +119,12 @@ function renderSingBox(config, candidate, nodes, groups) {
       rcode: 'NOERROR',
     },
     { type: 'logical', mode: 'or', rules: localDnsScope, server: 'local' },
+    {
+      query_type: 'HTTPS',
+      rule_set: candidate.dns.appleRuleSet,
+      action: 'predefined',
+      rcode: 'NOERROR',
+    },
   )
   config.dns.rules = [...dnsBlockRules, ...dnsRules]
   config.route.rules = [...(config.route.rules || []), ...renderSingBoxRules(candidate)]

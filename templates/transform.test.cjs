@@ -69,7 +69,7 @@ async function render(target) {
   return JSON.parse(content)
 }
 
-function assertDefaults(groups, tagKey, membersKey, defaultKey) {
+function assertDefaults(groups, tagKey, membersKey, defaultKey, directTag) {
   for (const group of groups) {
     assert.ok(group[defaultKey], `${group[tagKey]} must declare a default`)
     assert.ok(group[membersKey].includes(group[defaultKey]), `${group[tagKey]} default must exist`)
@@ -79,6 +79,9 @@ function assertDefaults(groups, tagKey, membersKey, defaultKey) {
   assert.equal(groups.find(group => group[tagKey] === 'VPS管理-美国')[defaultKey], '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group[tagKey] === 'VPS管理-亚太')[defaultKey], '🇯🇵 ISIF JP')
   assert.deepEqual(groups.find(group => group[tagKey] === '🏠 美国家宽')[membersKey], householdNodes)
+  const apple = groups.find(group => group[tagKey] === '🍏 Apple')
+  assert.equal(apple[membersKey].length, 6)
+  assert.equal(apple[defaultKey], directTag)
 }
 
 test('uses the same canonical upstream for sing-box and generated Shadowrocket rules', () => {
@@ -103,7 +106,7 @@ test('renders the sing-box profile from eight ordinary nodes', async () => {
   assert.equal(nodes.length, 8)
   assert.equal(groups.length, 21)
   assert.ok(nodes.every(node => !Object.hasOwn(node, 'detour')))
-  assertDefaults(groups, 'tag', 'outbounds', 'default')
+  assertDefaults(groups, 'tag', 'outbounds', 'default', '🎯 直连')
 
   assert.deepEqual(tun.address, ['172.19.0.1/30', 'fdfe:dcba:9876::1/126'])
   assert.equal(tun.auto_route, true)
@@ -117,14 +120,30 @@ test('renders the sing-box profile from eight ordinary nodes', async () => {
   assert.equal(config.dns.rules[0].rcode, 'NXDOMAIN')
   const foreignIndex = config.dns.rules.findIndex(rule => rule.server === 'foreign')
   const noDataIndex = config.dns.rules.findIndex(rule => (
-    rule.action === 'predefined' && rule.rcode === 'NOERROR'
+    rule.action === 'predefined' && rule.rcode === 'NOERROR' && rule.type === 'logical'
   ))
   const localIndex = config.dns.rules.findIndex(rule => rule.type === 'logical' && rule.server === 'local')
+  const appleNoDataIndex = config.dns.rules.findIndex(rule => (
+    rule.rule_set === policy.dns.appleRuleSet &&
+    rule.query_type === 'HTTPS' &&
+    rule.action === 'predefined' &&
+    rule.rcode === 'NOERROR'
+  ))
   const fakeIpIndex = config.dns.rules.findIndex(rule => rule.server === 'fakeip' && rule.rewrite_ttl)
+  assert.deepEqual(
+    config.dns.rules.find(rule => rule.clash_mode === 'direct'),
+    { clash_mode: 'direct', server: 'local' },
+  )
+  assert.deepEqual(
+    config.dns.rules.find(rule => rule.clash_mode === 'global'),
+    { clash_mode: 'global', server: 'fakeip' },
+  )
   assert.equal(noDataIndex, foreignIndex + 1)
   assert.equal(localIndex, noDataIndex + 1)
-  assert.ok(fakeIpIndex > localIndex)
+  assert.equal(appleNoDataIndex, localIndex + 1)
+  assert.ok(fakeIpIndex > appleNoDataIndex)
   assert.equal(config.dns.rules[fakeIpIndex].rewrite_ttl, 60)
+  assert.deepEqual(config.dns.rules[fakeIpIndex].query_type, ['A', 'AAAA'])
 
   const noDataRule = config.dns.rules[noDataIndex]
   assert.deepEqual(noDataRule.rules[0], { query_type: ['AAAA', 'HTTPS'] })
@@ -134,11 +153,25 @@ test('renders the sing-box profile from eight ordinary nodes', async () => {
   })
   const noDataScope = noDataRule.rules[2].rules
   assert.deepEqual(noDataScope[0].rule_set, policy.dns.localRuleSets)
+  assert.ok(!noDataScope[0].rule_set.includes(policy.dns.appleRuleSet))
   assert.deepEqual(
     noDataScope.find(rule => rule.domain).domain,
     policy.routing.inline.find(rule => rule.policy === 'DIRECT' && rule.type === 'domain').values,
   )
   assert.deepEqual(config.dns.rules[localIndex].rules, noDataScope)
+  assert.ok(!JSON.stringify(config.dns.rules[localIndex]).includes(policy.dns.appleRuleSet))
+  assert.deepEqual(config.dns.rules[appleNoDataIndex], {
+    query_type: 'HTTPS',
+    rule_set: 'geosite-apple',
+    action: 'predefined',
+    rcode: 'NOERROR',
+  })
+  assert.deepEqual(
+    config.dns.rules
+      .slice(0, fakeIpIndex)
+      .filter(rule => JSON.stringify(rule).includes(policy.dns.appleRuleSet)),
+    [config.dns.rules[appleNoDataIndex]],
+  )
 
   const ipv6Reject = config.route.rules[0]
   const sniffIndex = config.route.rules.findIndex(rule => rule.action === 'sniff')
@@ -176,6 +209,11 @@ test('renders the sing-box profile from eight ordinary nodes', async () => {
     !Object.hasOwn(ruleSet, 'http_client')
   )))
   assert.ok(!Object.hasOwn(config, 'http_clients'))
+  assert.equal(
+    config.route.rules.find(rule => rule.rule_set === 'geosite-apple').outbound,
+    '🍏 Apple',
+  )
+  assert.deepEqual(config.route.default_domain_resolver, { server: 'public' })
   assert.equal(config.route.final, '🐟 漏网之鱼')
 })
 
@@ -188,7 +226,7 @@ test('renders the matching Shadowrocket profile and remote rule providers', asyn
   assert.equal(groups.length, 21)
   assert.ok(groups.every(group => group.type === 'select'))
   assert.ok(config.proxies.every(proxy => !Object.hasOwn(proxy, 'dialer-proxy')))
-  assertDefaults(groups, 'name', 'proxies', 'policy-select-name')
+  assertDefaults(groups, 'name', 'proxies', 'policy-select-name', 'DIRECT')
   assert.equal(Object.keys(providers).length, 22)
   assert.deepEqual(Object.keys(providers), policy.routing.ruleSets.map(ruleSet => ruleSet.tag))
   assert.ok(Object.values(providers).every(provider => (
