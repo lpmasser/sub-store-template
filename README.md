@@ -13,6 +13,8 @@
 
 SubStore 通过 GitHub Raw 读取 JSON 模板和分流策略，每个客户端的 Script Operator 使用 `link` 模式读取自己的渲染器。修改模板只在本仓库维护，不向基础设施仓库复制第二份。
 
+Egern 的 `auto_update.url` 由线上 SubStore File 的私有 Script Operator 参数 `autoUpdateUrl` 注入；本公开仓库只保存注入逻辑和测试占位值，不保存实际分享 URL。
+
 共享分组采用“业务策略 → 稳定出口 → 协议节点”两级选择结构。业务策略完整保留；出口只使用普通 selector，VLESS 为默认、Hysteria2 为手动备用。
 美国与亚太 VPS 管理流量使用独立策略组，分别默认经 DMIT Pro 和 ISIF JP 中转，并保留手动直连选项。
 

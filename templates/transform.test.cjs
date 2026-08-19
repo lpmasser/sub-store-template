@@ -17,6 +17,7 @@ const transformSources = {
   'sing-box': fs.readFileSync(path.join(directory, 'sing-box-transform.js'), 'utf8'),
   egern: fs.readFileSync(path.join(directory, 'egern-transform.js'), 'utf8'),
 }
+const egernAutoUpdateUrl = 'https://example.invalid/share/file/egern-eloy?token=test-only'
 
 const proxyTags = [
   '[自建]dmiteb-hy2',
@@ -46,6 +47,7 @@ async function render(target) {
     '$files',
     'produceArtifact',
     'ProxyUtils',
+    '$arguments',
     `${transformSources[target]}\nreturn $content`,
   )
   const content = await execute(
@@ -80,6 +82,7 @@ async function render(target) {
         safeDump: JSON.stringify,
       },
     },
+    target === 'egern' ? { autoUpdateUrl: egernAutoUpdateUrl } : {},
   )
   return JSON.parse(content)
 }
@@ -271,6 +274,10 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   const remoteRules = config.rules.filter(rule => rule.rule_set).map(rule => rule.rule_set)
 
   assert.equal(config.proxies.length, 8)
+  assert.deepEqual(config.auto_update, {
+    url: egernAutoUpdateUrl,
+    interval: 86400,
+  })
   assert.ok(config.proxies.every(proxy => Object.values(proxy)[0].name))
   assert.ok(config.proxies.every(proxy => !Object.hasOwn(Object.values(proxy)[0], 'prev_hop')))
   assert.equal(groups.length, 21)

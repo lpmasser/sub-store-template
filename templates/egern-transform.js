@@ -1,6 +1,10 @@
 // SubStore renderer for Egern.
 
 const template = JSON.parse($files[0])
+const autoUpdateUrl = $arguments?.autoUpdateUrl
+if (typeof autoUpdateUrl !== 'string' || !autoUpdateUrl.startsWith('https://')) {
+  throw new Error('缺少有效的 Egern 自动更新地址')
+}
 const policy = JSON.parse(await produceArtifact({
   name: 'routing-policy',
   type: 'file',
@@ -69,6 +73,10 @@ function mapPolicy(tag, candidate) {
 }
 
 function renderConfig(config, candidate, nodes, groups) {
+  config.auto_update = {
+    url: autoUpdateUrl,
+    interval: 86400,
+  }
   config.proxies = nodes
   config.policy_groups = groups.map(group => ({
     select: {
