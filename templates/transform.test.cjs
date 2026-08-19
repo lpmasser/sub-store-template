@@ -13,7 +13,10 @@ const templates = {
   'sing-box': JSON.parse(fs.readFileSync(path.join(directory, 'sing-box.json'), 'utf8')),
   egern: JSON.parse(fs.readFileSync(path.join(directory, 'egern.json'), 'utf8')),
 }
-const transformSource = fs.readFileSync(path.join(directory, 'transform.js'), 'utf8')
+const transformSources = {
+  'sing-box': fs.readFileSync(path.join(directory, 'sing-box-transform.js'), 'utf8'),
+  egern: fs.readFileSync(path.join(directory, 'egern-transform.js'), 'utf8'),
+}
 
 const proxyTags = [
   '[自建]dmiteb-hy2',
@@ -43,7 +46,7 @@ async function render(target) {
     '$files',
     'produceArtifact',
     'ProxyUtils',
-    `${transformSource}\nreturn $content`,
+    `${transformSources[target]}\nreturn $content`,
   )
   const content = await execute(
     [JSON.stringify(templates[target])],

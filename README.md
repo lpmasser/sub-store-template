@@ -7,10 +7,11 @@
 - `templates/routing-policy.json`：所有客户端的唯一分流策略源；
 - `templates/sing-box.json`：sing-box `1.13.18` 运行时模板；
 - `templates/egern.json`：Egern 原生 Profile 模板；
-- `templates/transform.js`：SubStore 共享渲染器；
+- `templates/sing-box-transform.js`：sing-box 渲染器；
+- `templates/egern-transform.js`：Egern 渲染器；
 - `templates/transform.test.cjs`：两个客户端的本地转换测试。
 
-SubStore 通过 GitHub Raw 读取 JSON 模板和分流策略，Script Operator 使用 `link` 模式读取 `transform.js`。修改模板只在本仓库维护，不向基础设施仓库复制第二份。
+SubStore 通过 GitHub Raw 读取 JSON 模板和分流策略，每个客户端的 Script Operator 使用 `link` 模式读取自己的渲染器。修改模板只在本仓库维护，不向基础设施仓库复制第二份。
 
 共享分组采用“业务策略 → 稳定出口 → 协议节点”两级选择结构。业务策略完整保留；出口只使用普通 selector，VLESS 为默认、Hysteria2 为手动备用。
 美国与亚太 VPS 管理流量使用独立策略组，分别默认经 DMIT Pro 和 ISIF JP 中转，并保留手动直连选项。
@@ -25,7 +26,8 @@ Apple 是可切换出口的 selector，因此不进入无条件本地 DNS 范围
 
 ```sh
 node -e 'const fs=require("node:fs"); for (const file of fs.readdirSync("templates").filter(name => name.endsWith(".json"))) JSON.parse(fs.readFileSync("templates/"+file))'
-node --check templates/transform.js
+node --check templates/sing-box-transform.js
+node --check templates/egern-transform.js
 node templates/transform.test.cjs
 ```
 
