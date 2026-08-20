@@ -162,6 +162,7 @@ test('renders the sing-box profile from eight ordinary nodes', async () => {
   const groups = config.outbounds.filter(outbound => outbound.type === 'selector')
   const tun = config.inbounds.find(inbound => inbound.type === 'tun')
   const mixed = config.inbounds.find(inbound => inbound.type === 'mixed')
+  const fakeIpServer = config.dns.servers.find(server => server.type === 'fakeip')
 
   assert.equal(nodes.length, 8)
   assert.equal(groups.length, 21)
@@ -172,8 +173,12 @@ test('renders the sing-box profile from eight ordinary nodes', async () => {
   assert.deepEqual(tun.address, ['172.19.0.1/30', 'fdfe:dcba:9876::1/126'])
   assert.equal(tun.auto_route, true)
   assert.equal(tun.strict_route, true)
+  assert.equal(tun.address[1], 'fdfe:dcba:9876::1/126')
   assert.equal(mixed.listen, '0.0.0.0')
   assert.equal(mixed.listen_port, 7890)
+  assert.equal(fakeIpServer.inet4_range, '198.18.0.0/15')
+  assert.equal(fakeIpServer.inet6_range, '2001:2::/48')
+  assert.notEqual(parseInt(fakeIpServer.inet6_range.split(':')[0], 16) & 0xfe00, 0xfc00)
   assert.equal(config.dns.strategy, 'prefer_ipv4')
   assert.equal(config.experimental.cache_file.store_fakeip, true)
 
@@ -329,6 +334,13 @@ test('renders a native Egern profile with matching groups and remote rule sets',
     'dialer-proxy',
     'privateRelays',
     'url-test',
+    'inet4_range',
+    'inet6_range',
+    '2001:2::/48',
+    'fdfe:dcba:9876::1/126',
+    'tun-in',
+    'auto_route',
+    'strict_route',
   ]) {
     assert.ok(!serialized.includes(field), `Egern must not contain ${field}`)
   }

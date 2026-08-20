@@ -24,6 +24,8 @@ sing-box 客户端保留 IPv4/IPv6 双栈 TUN，并按物理默认接口是否�
 
 规则模式下，除 local DNS scope 和显式 foreign 例外之外，本应使用 FakeIP 的域名对 HTTPS 查询统一返回 `NOERROR` NODATA，A/AAAA 继续使用 FakeIP。这样会放弃 HTTPS/SVCB 首包中的地址 hint、ECH 和 H3 提示，避免真实地址绕过 FakeIP、路由和 selector；后续连接仍可通过实际应用协议自行协商。Apple、Anthropic/AI 和其他代理域名使用同一规则，不维护单域名补丁；Apple selector 仍默认直连但可切代理。相关 Apple 服务与真实 IPv6 网络仍需在 macOS 客户端实测。
 
+FakeIP IPv4 保持 `198.18.0.0/15`，IPv6 使用 RFC 5180 benchmarking 段 `2001:2::/48`；TUN 接口地址仍是 `fdfe:dcba:9876::1/126`，两者用途不同。IANA 将 `2001:2::/48` 标记为 globally reachable=false，但 Chromium 138 的 IPAddressSpace 映射把它视为 public，可避免 `fc00::/7` FakeIP 触发 Electron/Chromium Private Network Access。其他应用自己的 SSRF 或 special-use 地址检查不在本修复保证范围。sing-box 会在 FakeIP 元数据网段变化时重置 FakeIP store，不要求删除整个 `cache.db`；客户端更新后仍需重连 SFM，并完全退出重开 Electron 应用以清理系统和应用 DNS 缓存。
+
 验证：
 
 ```sh
