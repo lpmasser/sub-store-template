@@ -10,8 +10,7 @@
     "isifjp": ["自建", "isifjp"]
   },
   "dns": {
-    "localRuleSets": ["geosite-cn", "geosite-steamcn"],
-    "appleRuleSet": "geosite-apple"
+    "localRuleSets": ["geosite-cn", "geosite-steamcn"]
   },
   "groups": [
     {"tag": "🚀 默认代理", "members": ["🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 美国家宽", "DIRECT"], "default": "🇺🇸 DMIT Pro"},

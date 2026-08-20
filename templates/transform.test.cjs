@@ -170,16 +170,19 @@ test('renders the sing-box profile from eight ordinary nodes', async () => {
   assert.equal(config.dns.rules[0].rule_set, 'geosite-adblock')
   assert.equal(config.dns.rules[0].rcode, 'NXDOMAIN')
   const foreignIndex = config.dns.rules.findIndex(rule => rule.server === 'foreign')
-  const noDataIndex = config.dns.rules.findIndex(rule => (
-    rule.action === 'predefined' && rule.rcode === 'NOERROR' && rule.type === 'logical'
+  const fakeIpHttpsNoDataIndex = config.dns.rules.findIndex(rule => (
+    rule.action === 'predefined' &&
+    rule.rcode === 'NOERROR' &&
+    rule.type === 'logical' &&
+    rule.rules?.[0]?.query_type === 'HTTPS'
+  ))
+  const directNoDataIndex = config.dns.rules.findIndex(rule => (
+    rule.action === 'predefined' &&
+    rule.rcode === 'NOERROR' &&
+    rule.type === 'logical' &&
+    Array.isArray(rule.rules?.[0]?.query_type)
   ))
   const localIndex = config.dns.rules.findIndex(rule => rule.type === 'logical' && rule.server === 'local')
-  const appleNoDataIndex = config.dns.rules.findIndex(rule => (
-    rule.rule_set === policy.dns.appleRuleSet &&
-    rule.query_type === 'HTTPS' &&
-    rule.action === 'predefined' &&
-    rule.rcode === 'NOERROR'
-  ))
   const fakeIpIndex = config.dns.rules.findIndex(rule => rule.server === 'fakeip' && rule.rewrite_ttl)
   assert.deepEqual(
     config.dns.rules.find(rule => rule.clash_mode === 'direct'),
@@ -189,40 +192,44 @@ test('renders the sing-box profile from eight ordinary nodes', async () => {
     config.dns.rules.find(rule => rule.clash_mode === 'global'),
     { clash_mode: 'global', server: 'fakeip' },
   )
-  assert.equal(noDataIndex, foreignIndex + 1)
-  assert.equal(localIndex, noDataIndex + 1)
-  assert.equal(appleNoDataIndex, localIndex + 1)
-  assert.ok(fakeIpIndex > appleNoDataIndex)
+  assert.equal(fakeIpHttpsNoDataIndex, foreignIndex + 1)
+  assert.equal(directNoDataIndex, fakeIpHttpsNoDataIndex + 1)
+  assert.equal(localIndex, directNoDataIndex + 1)
+  assert.ok(fakeIpIndex > localIndex)
   assert.equal(config.dns.rules[fakeIpIndex].rewrite_ttl, 60)
   assert.deepEqual(config.dns.rules[fakeIpIndex].query_type, ['A', 'AAAA'])
 
-  const noDataRule = config.dns.rules[noDataIndex]
-  assert.deepEqual(noDataRule.rules[0], { query_type: ['AAAA', 'HTTPS'] })
-  assert.deepEqual(noDataRule.rules[1], {
+  const localDnsScope = config.dns.rules[localIndex].rules
+  const fakeIpHttpsNoData = config.dns.rules[fakeIpHttpsNoDataIndex]
+  assert.deepEqual(fakeIpHttpsNoData.rules[0], { query_type: 'HTTPS' })
+  assert.deepEqual(
+    fakeIpHttpsNoData.rules.slice(1),
+    localDnsScope.map(rule => ({ ...rule, invert: true })),
+  )
+  assert.ok(fakeIpHttpsNoData.rules.slice(1).every(rule => rule.invert === true))
+
+  const directNoDataRule = config.dns.rules[directNoDataIndex]
+  assert.deepEqual(directNoDataRule.rules[0], { query_type: ['AAAA', 'HTTPS'] })
+  assert.deepEqual(directNoDataRule.rules[1], {
     default_interface_address: '2000::/3',
     invert: true,
   })
-  const noDataScope = noDataRule.rules[2].rules
-  assert.deepEqual(noDataScope[0].rule_set, policy.dns.localRuleSets)
-  assert.ok(!noDataScope[0].rule_set.includes(policy.dns.appleRuleSet))
+  assert.deepEqual(directNoDataRule.rules[2].rules, localDnsScope)
+  assert.deepEqual(localDnsScope[0].rule_set, policy.dns.localRuleSets)
+  assert.ok(!policy.dns.localRuleSets.includes('geosite-apple'))
+  assert.ok(!policy.dns.localRuleSets.includes('geosite-ai'))
   assert.deepEqual(
-    noDataScope.find(rule => rule.domain).domain,
+    localDnsScope.find(rule => rule.domain).domain,
     policy.routing.inline.find(rule => rule.policy === 'DIRECT' && rule.type === 'domain').values,
   )
-  assert.deepEqual(config.dns.rules[localIndex].rules, noDataScope)
-  assert.ok(!JSON.stringify(config.dns.rules[localIndex]).includes(policy.dns.appleRuleSet))
-  assert.deepEqual(config.dns.rules[appleNoDataIndex], {
-    query_type: 'HTTPS',
-    rule_set: 'geosite-apple',
-    action: 'predefined',
-    rcode: 'NOERROR',
-  })
-  assert.deepEqual(
-    config.dns.rules
-      .slice(0, fakeIpIndex)
-      .filter(rule => JSON.stringify(rule).includes(policy.dns.appleRuleSet)),
-    [config.dns.rules[appleNoDataIndex]],
-  )
+  assert.ok(!Object.hasOwn(policy.dns, 'appleRuleSet'))
+  assert.ok(!config.dns.rules.some(rule => JSON.stringify(rule).includes('geosite-apple')))
+
+  const anthropicDomain = 'api.anthropic.com'
+  assert.ok(!localDnsScope.find(rule => rule.domain).domain.includes(anthropicDomain))
+  assert.ok(!config.dns.rules[foreignIndex].domain_suffix.some(suffix => (
+    anthropicDomain === suffix || anthropicDomain.endsWith(`.${suffix}`)
+  )))
 
   const ipv6Reject = config.route.rules[0]
   const sniffIndex = config.route.rules.findIndex(rule => rule.action === 'sniff')
@@ -261,6 +268,10 @@ test('renders the sing-box profile from eight ordinary nodes', async () => {
   )))
   assert.ok(!Object.hasOwn(config, 'http_clients'))
   assert.equal(
+    config.route.rules.find(rule => rule.rule_set === 'geosite-ai').outbound,
+    '🧠 AI',
+  )
+  assert.equal(
     config.route.rules.find(rule => rule.rule_set === 'geosite-apple').outbound,
     '🍏 Apple',
   )
@@ -298,6 +309,18 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   )))
   assert.equal(remoteRules[0].policy, 'REJECT')
   assert.equal(config.rules.length, 49)
+  const serialized = JSON.stringify(config)
+  for (const field of [
+    'default_interface_address',
+    'download_detour',
+    'store_fakeip',
+    'no_drop',
+    'dialer-proxy',
+    'privateRelays',
+    'url-test',
+  ]) {
+    assert.ok(!serialized.includes(field), `Egern must not contain ${field}`)
+  }
   assert.deepEqual(config.rules[0], {
     ip_cidr: { match: '127.0.0.0/8', policy: 'DIRECT', no_resolve: true },
   })

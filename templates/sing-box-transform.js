@@ -85,6 +85,16 @@ function renderConfig(config, candidate, nodes, groups) {
       type: 'logical',
       mode: 'and',
       rules: [
+        { query_type: 'HTTPS' },
+        ...localDnsScope.map(rule => ({ ...rule, invert: true })),
+      ],
+      action: 'predefined',
+      rcode: 'NOERROR',
+    },
+    {
+      type: 'logical',
+      mode: 'and',
+      rules: [
         { query_type: ['AAAA', 'HTTPS'] },
         { default_interface_address: '2000::/3', invert: true },
         { type: 'logical', mode: 'or', rules: localDnsScope },
@@ -93,12 +103,6 @@ function renderConfig(config, candidate, nodes, groups) {
       rcode: 'NOERROR',
     },
     { type: 'logical', mode: 'or', rules: localDnsScope, server: 'local' },
-    {
-      query_type: 'HTTPS',
-      rule_set: candidate.dns.appleRuleSet,
-      action: 'predefined',
-      rcode: 'NOERROR',
-    },
   )
   config.dns.rules = [...dnsBlockRules, ...dnsRules]
   config.route.rules = [...(config.route.rules || []), ...renderRules(candidate)]

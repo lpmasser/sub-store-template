@@ -22,7 +22,7 @@ Egern 的 `auto_update.url` 由线上 SubStore File 的私有 Script Operator �
 
 sing-box 客户端保留 IPv4/IPv6 双栈 TUN，并按物理默认接口是否具有 `2000::/3` 地址处理本地解析范围：无公网 IPv6 时，AAAA/HTTPS 返回空的 `NOERROR` 响应，规则模式下来自 TUN 的国内字面量 IPv6 在 sniff 前快速拒绝；direct/global 模式保持原语义。`default_interface_address` 反映平台报告的默认接口，源码不保证自动排除 TUN；目前只能确认 SFM 的 direct dial 绑定 `en0`，真 IPv6 网络恢复行为仍需在 macOS 客户端实测。该处理基于已确认存在绕过系统 DNS 的字面量 IPv6，不把具体应用调用链写成确定根因。
 
-Apple 是可切换出口的 selector，因此不进入无条件本地 DNS 范围。规则模式下 Apple 的 A/AAAA 使用通用 FakeIP，HTTPS 单独返回 `NOERROR` NODATA，避免 SVCB/HTTPS 提示绕开 selector；默认选择直连时由 `route.default_domain_resolver` 解析，切换为代理时保留域名交给代理出口。iCloud、App Store、推送和中国区 CDN 仍需在 macOS 客户端实测。
+规则模式下，除 local DNS scope 和显式 foreign 例外之外，本应使用 FakeIP 的域名对 HTTPS 查询统一返回 `NOERROR` NODATA，A/AAAA 继续使用 FakeIP。这样会放弃 HTTPS/SVCB 首包中的地址 hint、ECH 和 H3 提示，避免真实地址绕过 FakeIP、路由和 selector；后续连接仍可通过实际应用协议自行协商。Apple、Anthropic/AI 和其他代理域名使用同一规则，不维护单域名补丁；Apple selector 仍默认直连但可切代理。相关 Apple 服务与真实 IPv6 网络仍需在 macOS 客户端实测。
 
 验证：
 
