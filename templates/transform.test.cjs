@@ -102,6 +102,15 @@ function assertDefaults(groups, tagKey, membersKey, defaultKey, directTag) {
   assert.equal(apple[defaultKey], directTag)
 }
 
+function assertManagementOrder(groups, tagKey) {
+  const tags = groups.map(group => group[tagKey])
+  const catchAllIndex = tags.indexOf('🐟 漏网之鱼')
+  assert.deepEqual(
+    tags.slice(catchAllIndex - 2, catchAllIndex + 1),
+    ['VPS管理-美国', 'VPS管理-亚太', '🐟 漏网之鱼'],
+  )
+}
+
 test('uses the same canonical upstream for both client rule formats', () => {
   const sources = new Map(ruleSources.ruleSets.map(ruleSet => [ruleSet.artifact, ruleSet.source]))
   for (const ruleSet of policy.routing.ruleSets) {
@@ -158,6 +167,7 @@ test('renders the sing-box profile from eight ordinary nodes', async () => {
   assert.equal(groups.length, 21)
   assert.ok(nodes.every(node => !Object.hasOwn(node, 'detour')))
   assertDefaults(groups, 'tag', 'outbounds', 'default', '🎯 直连')
+  assertManagementOrder(groups, 'tag')
 
   assert.deepEqual(tun.address, ['172.19.0.1/30', 'fdfe:dcba:9876::1/126'])
   assert.equal(tun.auto_route, true)
@@ -293,6 +303,7 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   assert.ok(config.proxies.every(proxy => !Object.hasOwn(Object.values(proxy)[0], 'prev_hop')))
   assert.equal(groups.length, 21)
   assert.ok(config.policy_groups.every(group => Object.keys(group).join() === 'select'))
+  assertManagementOrder(groups, 'name')
   assert.equal(groups.find(group => group.name === '🚀 默认代理').policies[0], '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group.name === '🧠 AI').policies[0], '🏠 美国家宽')
   assert.equal(groups.find(group => group.name === 'VPS管理-美国').policies[0], '🇺🇸 DMIT Pro')

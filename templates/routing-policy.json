@@ -15,8 +15,6 @@
   "groups": [
     {"tag": "🚀 默认代理", "members": ["🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 美国家宽", "DIRECT"], "default": "🇺🇸 DMIT Pro"},
     {"tag": "🧠 AI", "members": ["🚀 默认代理", "🏠 美国家宽", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP"], "default": "🏠 美国家宽"},
-    {"tag": "VPS管理-美国", "members": ["🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "DIRECT"], "default": "🇺🇸 DMIT Pro"},
-    {"tag": "VPS管理-亚太", "members": ["🇯🇵 ISIF JP", "DIRECT", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB"], "default": "🇯🇵 ISIF JP"},
     {"tag": "🍀 Google", "members": ["🚀 默认代理", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 美国家宽"], "default": "🇺🇸 DMIT Pro"},
     {"tag": "📹 YouTube", "members": ["🚀 默认代理", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 美国家宽"], "default": "🇺🇸 DMIT Pro"},
     {"tag": "🎥 NETFLIX", "members": ["🚀 默认代理", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 美国家宽"], "default": "🚀 默认代理"},
@@ -29,6 +27,8 @@
     {"tag": "🎵 TikTok", "members": ["🚀 默认代理", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 美国家宽"], "default": "🚀 默认代理"},
     {"tag": "🐬 OneDrive", "members": ["🚀 默认代理", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 美国家宽"], "default": "🚀 默认代理"},
     {"tag": "🎮 Steam", "members": ["🚀 默认代理", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 美国家宽"], "default": "🚀 默认代理"},
+    {"tag": "VPS管理-美国", "members": ["🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "DIRECT"], "default": "🇺🇸 DMIT Pro"},
+    {"tag": "VPS管理-亚太", "members": ["🇯🇵 ISIF JP", "DIRECT", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB"], "default": "🇯🇵 ISIF JP"},
     {"tag": "🐟 漏网之鱼", "members": ["🚀 默认代理", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 美国家宽", "DIRECT"], "default": "🚀 默认代理"},
     {"tag": "🇺🇸 DMIT Pro", "match": "dmitpro", "default": "[自建]dmitpro-vless[美国.LAX]"},
     {"tag": "🇺🇸 DMIT EB", "match": "dmiteb", "default": "[自建]dmiteb-vless"},
