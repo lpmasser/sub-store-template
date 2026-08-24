@@ -5,6 +5,16 @@ const policy = JSON.parse(await produceArtifact({
   name: 'routing-policy',
   type: 'file',
 }))
+const profile = $arguments.profile || 'default'
+
+if (profile === 'no-adblock') {
+  policy.routing.ruleSets = policy.routing.ruleSets.filter(
+    ruleSet => ruleSet.tag !== 'geosite-adblock',
+  )
+} else if (profile !== 'default') {
+  throw new Error(`不支持的 sing-box profile: ${profile}`)
+}
+
 const proxies = await produceArtifact({
   name: policy.collection,
   type: 'collection',

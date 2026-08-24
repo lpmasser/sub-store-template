@@ -42,7 +42,7 @@ const egernRuleFields = new Set([
   'ip_cidr6_set',
 ])
 
-async function render(target) {
+async function render(target, scriptArguments = {}) {
   const execute = new AsyncFunction(
     '$files',
     'produceArtifact',
@@ -82,7 +82,9 @@ async function render(target) {
         safeDump: JSON.stringify,
       },
     },
-    target === 'egern' ? { autoUpdateUrl: egernAutoUpdateUrl } : {},
+    target === 'egern'
+      ? { autoUpdateUrl: egernAutoUpdateUrl, ...scriptArguments }
+      : scriptArguments,
   )
   return JSON.parse(content)
 }
@@ -292,6 +294,24 @@ test('renders the sing-box profile from eight ordinary nodes', async () => {
   )
   assert.deepEqual(config.route.default_domain_resolver, { server: 'public' })
   assert.equal(config.route.final, '🐟 漏网之鱼')
+})
+
+test('renders a sing-box profile without ad blocking when requested', async () => {
+  const defaultConfig = await render('sing-box')
+  const noAdblockConfig = await render('sing-box', { profile: 'no-adblock' })
+  const expected = structuredClone(defaultConfig)
+
+  expected.dns.rules = expected.dns.rules.filter(rule => rule.rule_set !== 'geosite-adblock')
+  expected.route.rule_set = expected.route.rule_set.filter(
+    ruleSet => ruleSet.tag !== 'geosite-adblock',
+  )
+
+  assert.deepEqual(noAdblockConfig, expected)
+  assert.ok(!JSON.stringify(noAdblockConfig).includes('geosite-adblock'))
+  await assert.rejects(
+    () => render('sing-box', { profile: 'unknown' }),
+    /不支持的 sing-box profile: unknown/,
+  )
 })
 
 test('renders a native Egern profile with matching groups and remote rule sets', async () => {
