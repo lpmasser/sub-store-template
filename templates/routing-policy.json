@@ -15,6 +15,7 @@
   "groups": [
     {"tag": "🚀 默认代理", "members": ["🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 美国家宽", "DIRECT"], "default": "🇺🇸 DMIT Pro"},
     {"tag": "🧠 AI", "members": ["🚀 默认代理", "🏠 美国家宽", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP"], "default": "🏠 美国家宽"},
+    {"tag": "🔮 Palantir", "members": ["🚀 默认代理", "🏠 美国家宽", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP"], "default": "🏠 美国家宽"},
     {"tag": "🍀 Google", "members": ["🚀 默认代理", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 美国家宽"], "default": "🇺🇸 DMIT Pro"},
     {"tag": "📹 YouTube", "members": ["🚀 默认代理", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 美国家宽"], "default": "🇺🇸 DMIT Pro"},
     {"tag": "🎥 NETFLIX", "members": ["🚀 默认代理", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 美国家宽"], "default": "🚀 默认代理"},
@@ -40,6 +41,7 @@
     "inline": [
       {"type": "domain", "values": ["getsd.91shenfan.com", "api.privateapi.xyz", "wximg.wxs.qq.com", "dcg.microsoft.com", "talkgo.net", "elysia.h-e.top", "eloyzh.de"], "policy": "DIRECT"},
       {"type": "domain", "values": ["ssh.git.eloyzh.de"], "policy": "VPS管理-美国"},
+      {"type": "domain_suffix", "values": ["palantir.com", "palantirfoundry.com", "palantirfoundry.co.uk", "palantircloud.com", "palantirapollo.com"], "policy": "🔮 Palantir"},
       {"type": "domain_suffix", "values": ["augmentcode.com", "windsurf.com", "codeium.com", "openrouter.ai"], "policy": "🧠 AI"},
       {"type": "ip_cidr", "values": ["154.21.86.201/32", "154.17.227.251/32", "152.53.81.181/32", "23.81.118.181/32"], "policy": "VPS管理-美国"},
       {"type": "ip_cidr", "values": ["45.129.8.190/32", "152.175.36.149/32"], "policy": "VPS管理-亚太"}

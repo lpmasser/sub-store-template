@@ -33,6 +33,13 @@ const householdNodes = [
   '[自建][家宽拼车]Vircs-SS[经DMIT Pro]',
   '[自建][家宽拼车]Vircs-SS[经DMIT EB]',
 ]
+const palantirDomains = [
+  'palantir.com',
+  'palantirfoundry.com',
+  'palantirfoundry.co.uk',
+  'palantircloud.com',
+  'palantirapollo.com',
+]
 const egernRuleFields = new Set([
   'domain_set',
   'domain_suffix_set',
@@ -96,6 +103,7 @@ function assertDefaults(groups, tagKey, membersKey, defaultKey, directTag) {
   }
   assert.equal(groups.find(group => group[tagKey] === '🚀 默认代理')[defaultKey], '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group[tagKey] === '🧠 AI')[defaultKey], '🏠 美国家宽')
+  assert.equal(groups.find(group => group[tagKey] === '🔮 Palantir')[defaultKey], '🏠 美国家宽')
   assert.equal(groups.find(group => group[tagKey] === 'VPS管理-美国')[defaultKey], '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group[tagKey] === 'VPS管理-亚太')[defaultKey], '🇯🇵 ISIF JP')
   assert.deepEqual(groups.find(group => group[tagKey] === '🏠 美国家宽')[membersKey], householdNodes)
@@ -167,7 +175,7 @@ test('renders the sing-box profile from eight ordinary nodes', async () => {
   const fakeIpServer = config.dns.servers.find(server => server.type === 'fakeip')
 
   assert.equal(nodes.length, 8)
-  assert.equal(groups.length, 21)
+  assert.equal(groups.length, 22)
   assert.ok(nodes.every(node => !Object.hasOwn(node, 'detour')))
   assertDefaults(groups, 'tag', 'outbounds', 'default', '🎯 直连')
   assertManagementOrder(groups, 'tag')
@@ -288,6 +296,10 @@ test('renders the sing-box profile from eight ordinary nodes', async () => {
     config.route.rules.find(rule => rule.rule_set === 'geosite-ai').outbound,
     '🧠 AI',
   )
+  assert.deepEqual(
+    config.route.rules.find(rule => rule.outbound === '🔮 Palantir'),
+    { domain_suffix: palantirDomains, outbound: '🔮 Palantir' },
+  )
   assert.equal(
     config.route.rules.find(rule => rule.rule_set === 'geosite-apple').outbound,
     '🍏 Apple',
@@ -326,11 +338,12 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   })
   assert.ok(config.proxies.every(proxy => Object.values(proxy)[0].name))
   assert.ok(config.proxies.every(proxy => !Object.hasOwn(Object.values(proxy)[0], 'prev_hop')))
-  assert.equal(groups.length, 21)
+  assert.equal(groups.length, 22)
   assert.ok(config.policy_groups.every(group => Object.keys(group).join() === 'select'))
   assertManagementOrder(groups, 'name')
   assert.equal(groups.find(group => group.name === '🚀 默认代理').policies[0], '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group.name === '🧠 AI').policies[0], '🏠 美国家宽')
+  assert.equal(groups.find(group => group.name === '🔮 Palantir').policies[0], '🏠 美国家宽')
   assert.equal(groups.find(group => group.name === 'VPS管理-美国').policies[0], '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group.name === 'VPS管理-亚太').policies[0], '🇯🇵 ISIF JP')
   assert.deepEqual(groups.find(group => group.name === '🏠 美国家宽').policies, householdNodes)
@@ -344,7 +357,13 @@ test('renders a native Egern profile with matching groups and remote rule sets',
     rule.update_interval === 86400
   )))
   assert.equal(remoteRules[0].policy, 'REJECT')
-  assert.equal(config.rules.length, 49)
+  assert.equal(config.rules.length, 54)
+  assert.deepEqual(
+    config.rules
+      .filter(rule => rule.domain_suffix?.policy === '🔮 Palantir')
+      .map(rule => rule.domain_suffix.match),
+    palantirDomains,
+  )
   const serialized = JSON.stringify(config)
   for (const field of [
     'default_interface_address',
