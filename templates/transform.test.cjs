@@ -40,6 +40,33 @@ const palantirDomains = [
   'palantircloud.com',
   'palantirapollo.com',
 ]
+const legacyRouteExcludeAddress = [
+  '10.0.0.0/8',
+  '172.16.0.0/12',
+  '192.168.0.0/16',
+]
+const routeExcludeAddress = [
+  '10.0.0.0/8',
+  '172.16.0.0/15',
+  '172.18.0.0/16',
+  '172.19.0.4/30',
+  '172.19.0.8/29',
+  '172.19.0.16/28',
+  '172.19.0.32/27',
+  '172.19.0.64/26',
+  '172.19.0.128/25',
+  '172.19.1.0/24',
+  '172.19.2.0/23',
+  '172.19.4.0/22',
+  '172.19.8.0/21',
+  '172.19.16.0/20',
+  '172.19.32.0/19',
+  '172.19.64.0/18',
+  '172.19.128.0/17',
+  '172.20.0.0/14',
+  '172.24.0.0/13',
+  '192.168.0.0/16',
+]
 const egernRuleFields = new Set([
   'domain_set',
   'domain_suffix_set',
@@ -121,6 +148,44 @@ function assertManagementOrder(groups, tagKey) {
   )
 }
 
+function ipv4CidrRange(value) {
+  const [address, rawPrefix] = value.split('/')
+  const prefix = Number(rawPrefix)
+  const integer = address
+    .split('.')
+    .reduce((result, part) => (result << 8n) + BigInt(part), 0n)
+  const size = 1n << BigInt(32 - prefix)
+  const start = integer - (integer % size)
+  return { start, end: start + size - 1n }
+}
+
+function rangesOverlap(left, right) {
+  return left.start <= right.end && right.start <= left.end
+}
+
+function normalizeIpv4Cidrs(values) {
+  const ranges = values
+    .map(ipv4CidrRange)
+    .sort((left, right) => left.start < right.start ? -1 : 1)
+  const normalized = []
+
+  for (const range of ranges) {
+    const previous = normalized.at(-1)
+    if (!previous || range.start > previous.end + 1n) {
+      normalized.push({ ...range })
+    } else {
+      previous.end = previous.end > range.end ? previous.end : range.end
+    }
+  }
+  return normalized
+}
+
+function countIpv4Addresses(values) {
+  return values
+    .map(ipv4CidrRange)
+    .reduce((total, range) => total + range.end - range.start + 1n, 0n)
+}
+
 test('uses the same canonical upstream for both client rule formats', () => {
   const sources = new Map(ruleSources.ruleSets.map(ruleSet => [ruleSet.artifact, ruleSet.source]))
   for (const ruleSet of policy.routing.ruleSets) {
@@ -166,6 +231,32 @@ test('generated Egern rule sets use native fields and valid YAML scalars', () =>
   }
 })
 
+test('keeps private LAN exclusions except for the sing-box TUN IPv4 subnet', () => {
+  const config = templates['sing-box']
+  const tun = config.inbounds.find(inbound => inbound.type === 'tun')
+  const fakeIpServer = config.dns.servers.find(server => server.type === 'fakeip')
+  const removedTunSubnet = '172.19.0.0/30'
+  const excludedRanges = tun.route_exclude_address.map(ipv4CidrRange)
+
+  assert.deepEqual(tun.route_exclude_address, routeExcludeAddress)
+  assert.deepEqual(
+    normalizeIpv4Cidrs([...tun.route_exclude_address, removedTunSubnet]),
+    normalizeIpv4Cidrs(legacyRouteExcludeAddress),
+  )
+  assert.equal(
+    countIpv4Addresses(legacyRouteExcludeAddress) - countIpv4Addresses(tun.route_exclude_address),
+    4n,
+  )
+  assert.ok(excludedRanges.every(range => !rangesOverlap(range, ipv4CidrRange(removedTunSubnet))))
+  assert.ok(excludedRanges.every(range => !rangesOverlap(range, ipv4CidrRange(fakeIpServer.inet4_range))))
+  assert.ok(tun.route_exclude_address.every(value => !value.includes(':')))
+  assert.ok(tun.address.some(value => value === 'fdfe:dcba:9876::1/126'))
+  assert.equal(fakeIpServer.inet6_range, '2001:2::/48')
+  assert.equal(config.dns.independent_cache, true)
+  assert.ok(!Object.hasOwn(tun, 'dns_mode'))
+  assert.ok(!Object.hasOwn(tun, 'dns_address'))
+})
+
 test('renders the sing-box profile from eight ordinary nodes', async () => {
   const config = await render('sing-box')
   const nodes = config.outbounds.filter(outbound => outbound.type === 'vless')
@@ -181,6 +272,7 @@ test('renders the sing-box profile from eight ordinary nodes', async () => {
   assertManagementOrder(groups, 'tag')
 
   assert.deepEqual(tun.address, ['172.19.0.1/30', 'fdfe:dcba:9876::1/126'])
+  assert.deepEqual(tun.route_exclude_address, routeExcludeAddress)
   assert.equal(tun.auto_route, true)
   assert.equal(tun.strict_route, true)
   assert.equal(tun.address[1], 'fdfe:dcba:9876::1/126')
@@ -319,6 +411,10 @@ test('renders a sing-box profile without ad blocking when requested', async () =
   )
 
   assert.deepEqual(noAdblockConfig, expected)
+  assert.deepEqual(
+    noAdblockConfig.inbounds.find(inbound => inbound.type === 'tun').route_exclude_address,
+    routeExcludeAddress,
+  )
   assert.ok(!JSON.stringify(noAdblockConfig).includes('geosite-adblock'))
   await assert.rejects(
     () => render('sing-box', { profile: 'unknown' }),

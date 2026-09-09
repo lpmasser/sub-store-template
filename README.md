@@ -5,7 +5,7 @@
 ## 客户端模板
 
 - `templates/routing-policy.json`：所有客户端的唯一分流策略源；
-- `templates/sing-box.json`：sing-box `1.13.18` 运行时模板；
+- `templates/sing-box.json`：sing-box `1.13.18` 与 `1.14.0` 共用的运行时模板；
 - `templates/egern.json`：Egern 原生 Profile 模板；
 - `templates/sing-box-transform.js`：sing-box 渲染器；
 - `templates/egern-transform.js`：Egern 渲染器；
@@ -23,6 +23,8 @@ Egern 的 `auto_update.url` 由线上 SubStore File 的私有 Script Operator �
 所有客户端节点都来自同一个 SubStore Collection。Egern 输出使用原生 `proxies`、`policy_groups` 和 `rules`，不套用 Clash 配置。美国家宽的 DMIT Pro 与 DMIT EB 路径都由对应 Host 在服务端转发，模板不生成客户端链式代理，也不读取额外的私密节点快照。
 
 sing-box 客户端保留 IPv4/IPv6 双栈 TUN，并按物理默认接口是否具有 `2000::/3` 地址处理本地解析范围：无公网 IPv6 时，AAAA/HTTPS 返回空的 `NOERROR` 响应，规则模式下来自 TUN 的国内字面量 IPv6 在 sniff 前快速拒绝；direct/global 模式保持原语义。`default_interface_address` 反映平台报告的默认接口，源码不保证自动排除 TUN；目前只能确认 SFM 的 direct dial 绑定 `en0`，真 IPv6 网络恢复行为仍需在 macOS 客户端实测。该处理基于已确认存在绕过系统 DNS 的字面量 IPv6，不把具体应用调用链写成确定根因。
+
+TUN 的 `route_exclude_address` 继续排除 `10.0.0.0/8`、`192.168.0.0/16` 与 `172.16.0.0/12` 的其余地址，但从后者精确扣除 TUN 自用的 `172.19.0.0/30`。这样 `172.19.0.2` 虚拟 DNS 不会因整段私网排除而绕过 TUN，同时不改变其他 RFC 1918 地址的原有排除行为。
 
 规则模式下，除 local DNS scope 和显式 foreign 例外之外，本应使用 FakeIP 的域名对 HTTPS 查询统一返回 `NOERROR` NODATA，A/AAAA 继续使用 FakeIP。这样会放弃 HTTPS/SVCB 首包中的地址 hint、ECH 和 H3 提示，避免真实地址绕过 FakeIP、路由和 selector；后续连接仍可通过实际应用协议自行协商。Apple、Anthropic/AI 和其他代理域名使用同一规则，不维护单域名补丁；Apple selector 仍默认直连但可切代理。相关 Apple 服务与真实 IPv6 网络仍需在 macOS 客户端实测。
 
