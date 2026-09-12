@@ -24,17 +24,21 @@ const proxyTags = [
   '[自建]dmiteb-vless',
   '[自建][家宽拼车]Vircs-SS[经DMIT EB]',
   '[自建][家宽拼车]Vircs-SS[经DMIT Pro]',
+  '[自建][家宽拼车]QQPW-SS[经DMIT EB]',
+  '[自建][家宽拼车]QQPW-SS[经DMIT Pro]',
   '[自建]dmitpro-hy2[美国.LAX]',
   '[自建]dmitpro-vless[美国.LAX]',
   '[自建]isifjp-hy2',
   '[自建]isifjp-vless',
-  'ss-QQPW-US',
 ]
 const householdNodes = [
   '[自建][家宽拼车]Vircs-SS[经DMIT Pro]',
   '[自建][家宽拼车]Vircs-SS[经DMIT EB]',
 ]
-const qqpwHouseholdNodes = ['ss-QQPW-US']
+const qqpwHouseholdNodes = [
+  '[自建][家宽拼车]QQPW-SS[经DMIT Pro]',
+  '[自建][家宽拼车]QQPW-SS[经DMIT EB]',
+]
 const palantirDomains = [
   'palantir.com',
   'palantirfoundry.com',
@@ -96,33 +100,18 @@ async function render(target, scriptArguments = {}) {
         throw new Error(`unexpected artifact request: ${JSON.stringify(request)}`)
       }
       if (request.platform === 'sing-box') {
-        return proxyTags.map(tag => ({
-          tag,
-          type: tag === 'ss-QQPW-US' ? 'shadowsocks' : 'vless',
-        }))
+        return proxyTags.map(tag => ({ tag, type: 'vless' }))
       }
       if (request.platform === 'Egern') {
         return JSON.stringify({
-          proxies: proxyTags.map((name, index) => (
-            name === 'ss-QQPW-US'
-              ? {
-                  shadowsocks: {
-                    name,
-                    server: `node-${index + 1}.example.com`,
-                    port: 443,
-                    method: 'aes-256-gcm',
-                    password: 'test-only',
-                  },
-                }
-              : {
-                  vless: {
-                    name,
-                    server: `node-${index + 1}.example.com`,
-                    port: 443,
-                    user_id: 'test-only',
-                  },
-                }
-          )),
+          proxies: proxyTags.map((name, index) => ({
+            vless: {
+              name,
+              server: `node-${index + 1}.example.com`,
+              port: 443,
+              user_id: 'test-only',
+            },
+          })),
         })
       }
       throw new Error(`unexpected platform: ${request.platform}`)
@@ -275,7 +264,7 @@ test('keeps private LAN exclusions except for the sing-box TUN IPv4 subnet', () 
   assert.ok(!Object.hasOwn(tun, 'dns_address'))
 })
 
-test('renders the sing-box profile from nine ordinary nodes', async () => {
+test('renders the sing-box profile from ten ordinary nodes', async () => {
   const config = await render('sing-box')
   const nodes = config.outbounds.filter(outbound => proxyTags.includes(outbound.tag))
   const groups = config.outbounds.filter(outbound => outbound.type === 'selector')
@@ -283,9 +272,8 @@ test('renders the sing-box profile from nine ordinary nodes', async () => {
   const mixed = config.inbounds.find(inbound => inbound.type === 'mixed')
   const fakeIpServer = config.dns.servers.find(server => server.type === 'fakeip')
 
-  assert.equal(nodes.length, 9)
+  assert.equal(nodes.length, 10)
   assert.equal(groups.length, 23)
-  assert.equal(nodes.find(node => node.tag === 'ss-QQPW-US').type, 'shadowsocks')
   assert.ok(nodes.every(node => !Object.hasOwn(node, 'detour')))
   assertDefaults(groups, 'tag', 'outbounds', 'default', '🎯 直连')
   assertManagementOrder(groups, 'tag')
@@ -446,7 +434,7 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   const groups = config.policy_groups.map(group => group.select)
   const remoteRules = config.rules.filter(rule => rule.rule_set).map(rule => rule.rule_set)
 
-  assert.equal(config.proxies.length, 9)
+  assert.equal(config.proxies.length, 10)
   assert.deepEqual(config.auto_update, {
     url: egernAutoUpdateUrl,
     interval: 86400,

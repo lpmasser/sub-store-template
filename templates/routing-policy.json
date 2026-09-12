@@ -5,7 +5,7 @@
   "singBoxDirectTag": "🎯 直连",
   "patterns": {
     "home": ["家宽拼车", "vircs"],
-    "qqpwHome": ["qqpw"],
+    "qqpwHome": ["自建", "家宽拼车", "qqpw"],
     "dmitpro": ["自建", "dmitpro"],
     "dmiteb": ["自建", "dmiteb"],
     "isifjp": ["自建", "isifjp"]
@@ -36,7 +36,7 @@
     {"tag": "🇺🇸 DMIT EB", "match": "dmiteb", "default": "[自建]dmiteb-vless"},
     {"tag": "🇯🇵 ISIF JP", "match": "isifjp", "default": "[自建]isifjp-vless"},
     {"tag": "🏠 美国家宽", "match": "home", "default": "[自建][家宽拼车]Vircs-SS[经DMIT Pro]"},
-    {"tag": "🏠 QQPW家宽", "match": "qqpwHome", "default": "ss-QQPW-US"}
+    {"tag": "🏠 QQPW家宽", "match": "qqpwHome", "default": "[自建][家宽拼车]QQPW-SS[经DMIT Pro]"}
   ],
   "routing": {
     "downloadDetour": "🚀 默认代理",
