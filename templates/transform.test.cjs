@@ -28,11 +28,13 @@ const proxyTags = [
   '[自建]dmitpro-vless[美国.LAX]',
   '[自建]isifjp-hy2',
   '[自建]isifjp-vless',
+  'ss-QQPW-US',
 ]
 const householdNodes = [
   '[自建][家宽拼车]Vircs-SS[经DMIT Pro]',
   '[自建][家宽拼车]Vircs-SS[经DMIT EB]',
 ]
+const qqpwHouseholdNodes = ['ss-QQPW-US']
 const palantirDomains = [
   'palantir.com',
   'palantirfoundry.com',
@@ -94,18 +96,33 @@ async function render(target, scriptArguments = {}) {
         throw new Error(`unexpected artifact request: ${JSON.stringify(request)}`)
       }
       if (request.platform === 'sing-box') {
-        return proxyTags.map(tag => ({ tag, type: 'vless' }))
+        return proxyTags.map(tag => ({
+          tag,
+          type: tag === 'ss-QQPW-US' ? 'shadowsocks' : 'vless',
+        }))
       }
       if (request.platform === 'Egern') {
         return JSON.stringify({
-          proxies: proxyTags.map((name, index) => ({
-            vless: {
-              name,
-              server: `node-${index + 1}.example.com`,
-              port: 443,
-              user_id: 'test-only',
-            },
-          })),
+          proxies: proxyTags.map((name, index) => (
+            name === 'ss-QQPW-US'
+              ? {
+                  shadowsocks: {
+                    name,
+                    server: `node-${index + 1}.example.com`,
+                    port: 443,
+                    method: 'aes-256-gcm',
+                    password: 'test-only',
+                  },
+                }
+              : {
+                  vless: {
+                    name,
+                    server: `node-${index + 1}.example.com`,
+                    port: 443,
+                    user_id: 'test-only',
+                  },
+                }
+          )),
         })
       }
       throw new Error(`unexpected platform: ${request.platform}`)
@@ -134,8 +151,9 @@ function assertDefaults(groups, tagKey, membersKey, defaultKey, directTag) {
   assert.equal(groups.find(group => group[tagKey] === 'VPS管理-美国')[defaultKey], '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group[tagKey] === 'VPS管理-亚太')[defaultKey], '🇯🇵 ISIF JP')
   assert.deepEqual(groups.find(group => group[tagKey] === '🏠 美国家宽')[membersKey], householdNodes)
+  assert.deepEqual(groups.find(group => group[tagKey] === '🏠 QQPW家宽')[membersKey], qqpwHouseholdNodes)
   const apple = groups.find(group => group[tagKey] === '🍏 Apple')
-  assert.equal(apple[membersKey].length, 6)
+  assert.equal(apple[membersKey].length, 7)
   assert.equal(apple[defaultKey], directTag)
 }
 
@@ -257,16 +275,17 @@ test('keeps private LAN exclusions except for the sing-box TUN IPv4 subnet', () 
   assert.ok(!Object.hasOwn(tun, 'dns_address'))
 })
 
-test('renders the sing-box profile from eight ordinary nodes', async () => {
+test('renders the sing-box profile from nine ordinary nodes', async () => {
   const config = await render('sing-box')
-  const nodes = config.outbounds.filter(outbound => outbound.type === 'vless')
+  const nodes = config.outbounds.filter(outbound => proxyTags.includes(outbound.tag))
   const groups = config.outbounds.filter(outbound => outbound.type === 'selector')
   const tun = config.inbounds.find(inbound => inbound.type === 'tun')
   const mixed = config.inbounds.find(inbound => inbound.type === 'mixed')
   const fakeIpServer = config.dns.servers.find(server => server.type === 'fakeip')
 
-  assert.equal(nodes.length, 8)
-  assert.equal(groups.length, 22)
+  assert.equal(nodes.length, 9)
+  assert.equal(groups.length, 23)
+  assert.equal(nodes.find(node => node.tag === 'ss-QQPW-US').type, 'shadowsocks')
   assert.ok(nodes.every(node => !Object.hasOwn(node, 'detour')))
   assertDefaults(groups, 'tag', 'outbounds', 'default', '🎯 直连')
   assertManagementOrder(groups, 'tag')
@@ -427,14 +446,14 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   const groups = config.policy_groups.map(group => group.select)
   const remoteRules = config.rules.filter(rule => rule.rule_set).map(rule => rule.rule_set)
 
-  assert.equal(config.proxies.length, 8)
+  assert.equal(config.proxies.length, 9)
   assert.deepEqual(config.auto_update, {
     url: egernAutoUpdateUrl,
     interval: 86400,
   })
   assert.ok(config.proxies.every(proxy => Object.values(proxy)[0].name))
   assert.ok(config.proxies.every(proxy => !Object.hasOwn(Object.values(proxy)[0], 'prev_hop')))
-  assert.equal(groups.length, 22)
+  assert.equal(groups.length, 23)
   assert.ok(config.policy_groups.every(group => Object.keys(group).join() === 'select'))
   assertManagementOrder(groups, 'name')
   assert.equal(groups.find(group => group.name === '🚀 默认代理').policies[0], '🇺🇸 DMIT Pro')
@@ -443,6 +462,7 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   assert.equal(groups.find(group => group.name === 'VPS管理-美国').policies[0], '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group.name === 'VPS管理-亚太').policies[0], '🇯🇵 ISIF JP')
   assert.deepEqual(groups.find(group => group.name === '🏠 美国家宽').policies, householdNodes)
+  assert.deepEqual(groups.find(group => group.name === '🏠 QQPW家宽').policies, qqpwHouseholdNodes)
   assert.equal(groups.find(group => group.name === '🍏 Apple').policies[0], 'DIRECT')
 
   assert.equal(remoteRules.length, 22)
