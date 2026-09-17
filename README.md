@@ -28,14 +28,19 @@ sing-box 客户端保留 IPv4/IPv6 双栈 TUN，并按物理默认接口是否�
 
 FakeIP IPv4 保持 `198.18.0.0/15`，IPv6 使用 RFC 5180 benchmarking 段 `2001:2::/48`；TUN 接口地址仍是 `fdfe:dcba:9876::1/126`，两者用途不同。IANA 将 `2001:2::/48` 标记为 globally reachable=false，但 Chromium 138 的 IPAddressSpace 映射把它视为 public，可避免 `fc00::/7` FakeIP 触发 Electron/Chromium Private Network Access。其他应用自己的 SSRF 或 special-use 地址检查不在本修复保证范围。sing-box 会在 FakeIP 元数据网段变化时重置 FakeIP store，不要求删除整个 `cache.db`；客户端更新后仍需重连 SFM，并完全退出重开 Electron 应用以清理系统和应用 DNS 缓存。
 
-验证：
+## 验证与发布
+
+模板、分流策略或渲染器变更，在本仓库执行一次：
 
 ```sh
-node -e 'const fs=require("node:fs"); for (const file of fs.readdirSync("templates").filter(name => name.endsWith(".json"))) JSON.parse(fs.readFileSync("templates/"+file))'
-node --check templates/sing-box-transform.js
-node --check templates/egern-transform.js
 node templates/transform.test.cjs
 ```
+
+该测试已解析模板/策略 JSON 并执行两个渲染器，无需另外运行 JSON 解析和 `node --check`。纯文档改动只检查内容与差异。测试使用固定节点和模拟 YAML 接口，不能证明真实订阅凭据、SubStore YAML 输出或客户端运行正常。
+
+只有修改 `scripts/build-rules.mjs`、`rules/sources.json` 或构建工作流时，才需要对应规则构建验证；普通模板变更不下载和重建规则。构建器/规则源变更使用工作流锁定的 sing-box 执行 `node scripts/build-rules.mjs` 后运行上述测试。构建本身的异常输入、格式和二进制校验继续保留。
+
+推送会改变线上通过 GitHub Raw 拉取的输入，按用户已授权的发布范围执行。发布后通过 SubStore 验证实际受影响输出；运行字段变化还需目标客户端加载检查。输入和环境未变时不重复检查。
 
 ## HaGeZi Pro
 
