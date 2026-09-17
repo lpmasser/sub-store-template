@@ -24,6 +24,8 @@ const proxyTags = [
   '[自建]dmiteb-vless',
   '[自建][家宽拼车]Vircs-SS[经DMIT EB]',
   '[自建][家宽拼车]Vircs-SS[经DMIT Pro]',
+  '[自建][家宽拼车]QQPW-SS[经DMIT EB]',
+  '[自建][家宽拼车]QQPW-SS[经DMIT Pro]',
   '[自建]dmitpro-hy2[美国.LAX]',
   '[自建]dmitpro-vless[美国.LAX]',
   '[自建]isifjp-hy2',
@@ -32,6 +34,44 @@ const proxyTags = [
 const householdNodes = [
   '[自建][家宽拼车]Vircs-SS[经DMIT Pro]',
   '[自建][家宽拼车]Vircs-SS[经DMIT EB]',
+]
+const qqpwHouseholdNodes = [
+  '[自建][家宽拼车]QQPW-SS[经DMIT Pro]',
+  '[自建][家宽拼车]QQPW-SS[经DMIT EB]',
+]
+const palantirDomains = [
+  'palantir.com',
+  'palantirfoundry.com',
+  'palantirfoundry.co.uk',
+  'palantircloud.com',
+  'palantirapollo.com',
+]
+const legacyRouteExcludeAddress = [
+  '10.0.0.0/8',
+  '172.16.0.0/12',
+  '192.168.0.0/16',
+]
+const routeExcludeAddress = [
+  '10.0.0.0/8',
+  '172.16.0.0/15',
+  '172.18.0.0/16',
+  '172.19.0.4/30',
+  '172.19.0.8/29',
+  '172.19.0.16/28',
+  '172.19.0.32/27',
+  '172.19.0.64/26',
+  '172.19.0.128/25',
+  '172.19.1.0/24',
+  '172.19.2.0/23',
+  '172.19.4.0/22',
+  '172.19.8.0/21',
+  '172.19.16.0/20',
+  '172.19.32.0/19',
+  '172.19.64.0/18',
+  '172.19.128.0/17',
+  '172.20.0.0/14',
+  '172.24.0.0/13',
+  '192.168.0.0/16',
 ]
 const egernRuleFields = new Set([
   'domain_set',
@@ -96,11 +136,13 @@ function assertDefaults(groups, tagKey, membersKey, defaultKey, directTag) {
   }
   assert.equal(groups.find(group => group[tagKey] === '🚀 默认代理')[defaultKey], '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group[tagKey] === '🧠 AI')[defaultKey], '🏠 美国家宽')
+  assert.equal(groups.find(group => group[tagKey] === '🔮 Palantir')[defaultKey], '🏠 美国家宽')
   assert.equal(groups.find(group => group[tagKey] === 'VPS管理-美国')[defaultKey], '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group[tagKey] === 'VPS管理-亚太')[defaultKey], '🇯🇵 ISIF JP')
   assert.deepEqual(groups.find(group => group[tagKey] === '🏠 美国家宽')[membersKey], householdNodes)
+  assert.deepEqual(groups.find(group => group[tagKey] === '🏠 QQPW家宽')[membersKey], qqpwHouseholdNodes)
   const apple = groups.find(group => group[tagKey] === '🍏 Apple')
-  assert.equal(apple[membersKey].length, 6)
+  assert.equal(apple[membersKey].length, 7)
   assert.equal(apple[defaultKey], directTag)
 }
 
@@ -111,6 +153,44 @@ function assertManagementOrder(groups, tagKey) {
     tags.slice(catchAllIndex - 2, catchAllIndex + 1),
     ['VPS管理-美国', 'VPS管理-亚太', '🐟 漏网之鱼'],
   )
+}
+
+function ipv4CidrRange(value) {
+  const [address, rawPrefix] = value.split('/')
+  const prefix = Number(rawPrefix)
+  const integer = address
+    .split('.')
+    .reduce((result, part) => (result << 8n) + BigInt(part), 0n)
+  const size = 1n << BigInt(32 - prefix)
+  const start = integer - (integer % size)
+  return { start, end: start + size - 1n }
+}
+
+function rangesOverlap(left, right) {
+  return left.start <= right.end && right.start <= left.end
+}
+
+function normalizeIpv4Cidrs(values) {
+  const ranges = values
+    .map(ipv4CidrRange)
+    .sort((left, right) => left.start < right.start ? -1 : 1)
+  const normalized = []
+
+  for (const range of ranges) {
+    const previous = normalized.at(-1)
+    if (!previous || range.start > previous.end + 1n) {
+      normalized.push({ ...range })
+    } else {
+      previous.end = previous.end > range.end ? previous.end : range.end
+    }
+  }
+  return normalized
+}
+
+function countIpv4Addresses(values) {
+  return values
+    .map(ipv4CidrRange)
+    .reduce((total, range) => total + range.end - range.start + 1n, 0n)
 }
 
 test('uses the same canonical upstream for both client rule formats', () => {
@@ -158,21 +238,48 @@ test('generated Egern rule sets use native fields and valid YAML scalars', () =>
   }
 })
 
-test('renders the sing-box profile from eight ordinary nodes', async () => {
+test('keeps private LAN exclusions except for the sing-box TUN IPv4 subnet', () => {
+  const config = templates['sing-box']
+  const tun = config.inbounds.find(inbound => inbound.type === 'tun')
+  const fakeIpServer = config.dns.servers.find(server => server.type === 'fakeip')
+  const removedTunSubnet = '172.19.0.0/30'
+  const excludedRanges = tun.route_exclude_address.map(ipv4CidrRange)
+
+  assert.deepEqual(tun.route_exclude_address, routeExcludeAddress)
+  assert.deepEqual(
+    normalizeIpv4Cidrs([...tun.route_exclude_address, removedTunSubnet]),
+    normalizeIpv4Cidrs(legacyRouteExcludeAddress),
+  )
+  assert.equal(
+    countIpv4Addresses(legacyRouteExcludeAddress) - countIpv4Addresses(tun.route_exclude_address),
+    4n,
+  )
+  assert.ok(excludedRanges.every(range => !rangesOverlap(range, ipv4CidrRange(removedTunSubnet))))
+  assert.ok(excludedRanges.every(range => !rangesOverlap(range, ipv4CidrRange(fakeIpServer.inet4_range))))
+  assert.ok(tun.route_exclude_address.every(value => !value.includes(':')))
+  assert.ok(tun.address.some(value => value === 'fdfe:dcba:9876::1/126'))
+  assert.equal(fakeIpServer.inet6_range, '2001:2::/48')
+  assert.equal(config.dns.independent_cache, true)
+  assert.ok(!Object.hasOwn(tun, 'dns_mode'))
+  assert.ok(!Object.hasOwn(tun, 'dns_address'))
+})
+
+test('renders the sing-box profile from ten ordinary nodes', async () => {
   const config = await render('sing-box')
-  const nodes = config.outbounds.filter(outbound => outbound.type === 'vless')
+  const nodes = config.outbounds.filter(outbound => proxyTags.includes(outbound.tag))
   const groups = config.outbounds.filter(outbound => outbound.type === 'selector')
   const tun = config.inbounds.find(inbound => inbound.type === 'tun')
   const mixed = config.inbounds.find(inbound => inbound.type === 'mixed')
   const fakeIpServer = config.dns.servers.find(server => server.type === 'fakeip')
 
-  assert.equal(nodes.length, 8)
-  assert.equal(groups.length, 21)
+  assert.equal(nodes.length, 10)
+  assert.equal(groups.length, 23)
   assert.ok(nodes.every(node => !Object.hasOwn(node, 'detour')))
   assertDefaults(groups, 'tag', 'outbounds', 'default', '🎯 直连')
   assertManagementOrder(groups, 'tag')
 
   assert.deepEqual(tun.address, ['172.19.0.1/30', 'fdfe:dcba:9876::1/126'])
+  assert.deepEqual(tun.route_exclude_address, routeExcludeAddress)
   assert.equal(tun.auto_route, true)
   assert.equal(tun.strict_route, true)
   assert.equal(tun.address[1], 'fdfe:dcba:9876::1/126')
@@ -288,6 +395,10 @@ test('renders the sing-box profile from eight ordinary nodes', async () => {
     config.route.rules.find(rule => rule.rule_set === 'geosite-ai').outbound,
     '🧠 AI',
   )
+  assert.deepEqual(
+    config.route.rules.find(rule => rule.outbound === '🔮 Palantir'),
+    { domain_suffix: palantirDomains, outbound: '🔮 Palantir' },
+  )
   assert.equal(
     config.route.rules.find(rule => rule.rule_set === 'geosite-apple').outbound,
     '🍏 Apple',
@@ -307,6 +418,10 @@ test('renders a sing-box profile without ad blocking when requested', async () =
   )
 
   assert.deepEqual(noAdblockConfig, expected)
+  assert.deepEqual(
+    noAdblockConfig.inbounds.find(inbound => inbound.type === 'tun').route_exclude_address,
+    routeExcludeAddress,
+  )
   assert.ok(!JSON.stringify(noAdblockConfig).includes('geosite-adblock'))
   await assert.rejects(
     () => render('sing-box', { profile: 'unknown' }),
@@ -319,21 +434,23 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   const groups = config.policy_groups.map(group => group.select)
   const remoteRules = config.rules.filter(rule => rule.rule_set).map(rule => rule.rule_set)
 
-  assert.equal(config.proxies.length, 8)
+  assert.equal(config.proxies.length, 10)
   assert.deepEqual(config.auto_update, {
     url: egernAutoUpdateUrl,
     interval: 86400,
   })
   assert.ok(config.proxies.every(proxy => Object.values(proxy)[0].name))
   assert.ok(config.proxies.every(proxy => !Object.hasOwn(Object.values(proxy)[0], 'prev_hop')))
-  assert.equal(groups.length, 21)
+  assert.equal(groups.length, 23)
   assert.ok(config.policy_groups.every(group => Object.keys(group).join() === 'select'))
   assertManagementOrder(groups, 'name')
   assert.equal(groups.find(group => group.name === '🚀 默认代理').policies[0], '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group.name === '🧠 AI').policies[0], '🏠 美国家宽')
+  assert.equal(groups.find(group => group.name === '🔮 Palantir').policies[0], '🏠 美国家宽')
   assert.equal(groups.find(group => group.name === 'VPS管理-美国').policies[0], '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group.name === 'VPS管理-亚太').policies[0], '🇯🇵 ISIF JP')
   assert.deepEqual(groups.find(group => group.name === '🏠 美国家宽').policies, householdNodes)
+  assert.deepEqual(groups.find(group => group.name === '🏠 QQPW家宽').policies, qqpwHouseholdNodes)
   assert.equal(groups.find(group => group.name === '🍏 Apple').policies[0], 'DIRECT')
 
   assert.equal(remoteRules.length, 22)
@@ -344,7 +461,13 @@ test('renders a native Egern profile with matching groups and remote rule sets',
     rule.update_interval === 86400
   )))
   assert.equal(remoteRules[0].policy, 'REJECT')
-  assert.equal(config.rules.length, 49)
+  assert.equal(config.rules.length, 54)
+  assert.deepEqual(
+    config.rules
+      .filter(rule => rule.domain_suffix?.policy === '🔮 Palantir')
+      .map(rule => rule.domain_suffix.match),
+    palantirDomains,
+  )
   const serialized = JSON.stringify(config)
   for (const field of [
     'default_interface_address',

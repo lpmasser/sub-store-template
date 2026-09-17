@@ -1,6 +1,7 @@
 # Generated file. Do not edit.
 # Source: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/tiktok.srs
 domain_set:
+  - "p16-tiktok-dm-sticker-sign-sg.ibyteimg.com"
   - "p16-tiktokcdn-com.akamaized.net"
   - "roovza-launches.appsflyersdk.com"
   - "roovza.inapps.appsflyersdk.com"
