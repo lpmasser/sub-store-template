@@ -429,6 +429,34 @@ test('renders a sing-box profile without ad blocking when requested', async () =
   )
 })
 
+test('routes an optional exact domain to its own DNS server', async () => {
+  const defaultConfig = await render('sing-box')
+  const configured = await render('sing-box', {
+    splitDnsDomain: 'repo.example.invalid',
+    splitDnsServer: '192.0.2.53',
+  })
+  const expected = structuredClone(defaultConfig)
+  expected.dns.servers.push({ tag: 'split-dns', type: 'udp', server: '192.0.2.53' })
+  expected.dns.rules.splice(1, 0, {
+    domain: 'repo.example.invalid',
+    query_type: ['A', 'AAAA'],
+    action: 'route',
+    server: 'split-dns',
+  })
+
+  assert.deepEqual(configured, expected)
+  const noAdblock = await render('sing-box', {
+    profile: 'no-adblock',
+    splitDnsDomain: 'repo.example.invalid',
+    splitDnsServer: '192.0.2.53',
+  })
+  assert.deepEqual(noAdblock.dns.rules[0], expected.dns.rules[1])
+  await assert.rejects(
+    () => render('sing-box', { splitDnsDomain: 'repo.example.invalid' }),
+    /split DNS requires both domain and server/,
+  )
+})
+
 test('renders a native Egern profile with matching groups and remote rule sets', async () => {
   const config = await render('egern')
   const groups = config.policy_groups.map(group => group.select)

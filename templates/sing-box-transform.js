@@ -6,6 +6,12 @@ const policy = JSON.parse(await produceArtifact({
   type: 'file',
 }))
 const profile = $arguments.profile || 'default'
+const splitDnsDomain = $arguments.splitDnsDomain
+const splitDnsServer = $arguments.splitDnsServer
+
+if (Boolean(splitDnsDomain) !== Boolean(splitDnsServer)) {
+  throw new Error('split DNS requires both domain and server')
+}
 
 if (profile === 'no-adblock') {
   policy.routing.ruleSets = policy.routing.ruleSets.filter(
@@ -86,6 +92,15 @@ function renderConfig(config, candidate, nodes, groups) {
       rcode: 'NXDOMAIN',
     }))
   const dnsRules = config.dns.rules || []
+  if (splitDnsDomain) {
+    config.dns.servers.push({ tag: 'split-dns', type: 'udp', server: splitDnsServer })
+    dnsRules.unshift({
+      domain: splitDnsDomain,
+      query_type: ['A', 'AAAA'],
+      action: 'route',
+      server: 'split-dns',
+    })
+  }
   const localDnsScope = buildLocalDnsScope(candidate)
   const foreignRuleIndex = dnsRules.findIndex(rule => rule.server === 'foreign')
   dnsRules.splice(
