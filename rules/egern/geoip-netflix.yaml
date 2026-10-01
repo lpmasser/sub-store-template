@@ -2,6 +2,8 @@
 # Source: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/netflix.srs
 no_resolve: true
 ip_cidr_set:
+  - "9.187.0.0/16"
+  - "9.188.0.0/16"
   - "23.246.0.0/18"
   - "37.77.184.0/21"
   - "45.57.0.0/17"
