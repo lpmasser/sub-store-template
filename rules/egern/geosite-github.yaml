@@ -35,6 +35,7 @@ domain_set:
   - "productionresultssa9.blob.core.windows.net"
 domain_suffix_set:
   - "atom.io"
+  - "cafe.github.com"
   - "collector.github.com"
   - "dependabot.com"
   - "gh.io"
