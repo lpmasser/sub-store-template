@@ -5,7 +5,7 @@
 ## 客户端模板
 
 - `templates/routing-policy.json`：所有客户端的唯一分流策略源；
-- `templates/sing-box.json`：sing-box `1.13.18` 与 `1.14.0` 共用的运行时模板；
+- `templates/sing-box.json`：要求 sing-box `1.14.0` 及以上的运行时模板；
 - `templates/egern.json`：Egern 原生 Profile 模板；
 - `templates/sing-box-transform.js`：sing-box 渲染器；
 - `templates/egern-transform.js`：Egern 渲染器；
@@ -27,6 +27,8 @@ sing-box 客户端保留 IPv4/IPv6 双栈 TUN，并按物理默认接口是否�
 TUN 的 `route_exclude_address` 继续排除 `10.0.0.0/8`、`192.168.0.0/16` 与 `172.16.0.0/12` 的其余地址，但从后者精确扣除 TUN 自用的 `172.19.0.0/30`。这样 `172.19.0.2` 虚拟 DNS 不会因整段私网排除而绕过 TUN，同时不改变其他 RFC 1918 地址的原有排除行为。
 
 规则模式下，除 local DNS scope 和显式 foreign 例外之外，本应使用 FakeIP 的域名对 HTTPS 查询统一返回 `NOERROR` NODATA，A/AAAA 继续使用 FakeIP。这样会放弃 HTTPS/SVCB 首包中的地址 hint、ECH 和 H3 提示，避免真实地址绕过 FakeIP、路由和 selector；后续连接仍可通过实际应用协议自行协商。Apple、Anthropic/AI 和其他代理域名使用同一规则，不维护单域名补丁；Apple selector 仍默认直连但可切代理。相关 Apple 服务与真实 IPv6 网络仍需在 macOS 客户端实测。
+
+本地 DNS 使用内置 `type: local` 系统解析，不再固定单个上游 DNS 地址；系统 DNS 的可用性由客户端运行环境负责。模板首部的 `.local` 后缀规则将查询交给系统 local，不写具体公司域名或 IP，优先于模式规则、FakeIP 与公网 IPv6 空响应；完整默认输出仍保留原广告拒绝规则的优先级。
 
 FakeIP IPv4 保持 `198.18.0.0/15`，IPv6 使用 RFC 5180 benchmarking 段 `2001:2::/48`；TUN 接口地址仍是 `fdfe:dcba:9876::1/126`，两者用途不同。IANA 将 `2001:2::/48` 标记为 globally reachable=false，但 Chromium 138 的 IPAddressSpace 映射把它视为 public，可避免 `fc00::/7` FakeIP 触发 Electron/Chromium Private Network Access。其他应用自己的 SSRF 或 special-use 地址检查不在本修复保证范围。sing-box 会在 FakeIP 元数据网段变化时重置 FakeIP store，不要求删除整个 `cache.db`；客户端更新后仍需重连 SFM，并完全退出重开 Electron 应用以清理系统和应用 DNS 缓存。
 
@@ -61,7 +63,7 @@ node templates/transform.test.cjs
 
 `rules/sources.json` 只是格式转换的产物清单，不保存策略组、分流去向或规则顺序。
 
-远程规则使用 `raw.githubusercontent.com` 原始地址。MetaCubeX 的 `sing` 与本仓库的 `main` 分支有意保留，以维持每日规则构建；不额外增加自动改写 commit SHA 的逻辑。仓库测试负责约束 canonical URL、客户端字段和生成结构，每次自动构建产物则由 Git 提交记录实际版本。
+远程规则使用 `raw.githubusercontent.com` 原始地址。MetaCubeX 的 `sing` 与本仓库的 `main` 分支有意保留，以维持每日规则构建；不额外增加自动改写 commit SHA 的逻辑。仓库测试负责约束 canonical URL、客户端字段和生成结构，每次自动构建产物则由 Git 提交记录实际版本。远程规则集下载使用顶层共享 `http_clients`（`tag: rule-set`，经 `🚀 默认代理`）与 `route.default_http_client`，各 rule-set 不再逐项写 `download_detour`。
 
 Egern 原生保留 `domain_regex` 等受支持字段。如果上游出现未支持的规则字段，构建会直接失败，不会静默丢弃。
 

@@ -259,7 +259,7 @@ test('keeps private LAN exclusions except for the sing-box TUN IPv4 subnet', () 
   assert.ok(tun.route_exclude_address.every(value => !value.includes(':')))
   assert.ok(tun.address.some(value => value === 'fdfe:dcba:9876::1/126'))
   assert.equal(fakeIpServer.inet6_range, '2001:2::/48')
-  assert.equal(config.dns.independent_cache, true)
+  assert.ok(!Object.hasOwn(config.dns, 'independent_cache'))
   assert.ok(!Object.hasOwn(tun, 'dns_mode'))
   assert.ok(!Object.hasOwn(tun, 'dns_address'))
 })
@@ -384,13 +384,14 @@ test('renders the sing-box profile from ten ordinary nodes', async () => {
   )))
 
   assert.equal(config.route.rule_set.length, 22)
+  assert.deepEqual(config.http_clients, [{ tag: 'rule-set', detour: '🚀 默认代理' }])
+  assert.equal(config.route.default_http_client, 'rule-set')
   assert.ok(config.route.rule_set.every(ruleSet => (
     ruleSet.url.startsWith('https://raw.githubusercontent.com/') &&
     !ruleSet.url.includes('gh-proxy.com') &&
-    ruleSet.download_detour === '🚀 默认代理' &&
+    !Object.hasOwn(ruleSet, 'download_detour') &&
     !Object.hasOwn(ruleSet, 'http_client')
   )))
-  assert.ok(!Object.hasOwn(config, 'http_clients'))
   assert.equal(
     config.route.rules.find(rule => rule.rule_set === 'geosite-ai').outbound,
     '🧠 AI',
@@ -429,32 +430,26 @@ test('renders a sing-box profile without ad blocking when requested', async () =
   )
 })
 
-test('routes an optional exact domain to its own DNS server', async () => {
-  const defaultConfig = await render('sing-box')
-  const configured = await render('sing-box', {
-    splitDnsDomain: 'repo.example.invalid',
-    splitDnsServer: '192.0.2.53',
-  })
-  const expected = structuredClone(defaultConfig)
-  expected.dns.servers.push({ tag: 'split-dns', type: 'udp', server: '192.0.2.53' })
-  expected.dns.rules.splice(1, 0, {
-    domain: 'repo.example.invalid',
-    query_type: ['A', 'AAAA'],
-    action: 'route',
-    server: 'split-dns',
-  })
-
-  assert.deepEqual(configured, expected)
-  const noAdblock = await render('sing-box', {
-    profile: 'no-adblock',
-    splitDnsDomain: 'repo.example.invalid',
-    splitDnsServer: '192.0.2.53',
-  })
-  assert.deepEqual(noAdblock.dns.rules[0], expected.dns.rules[1])
-  await assert.rejects(
-    () => render('sing-box', { splitDnsDomain: 'repo.example.invalid' }),
-    /split DNS requires both domain and server/,
+test('resolves .local names through the system DNS server first', async () => {
+  const config = await render('sing-box')
+  assert.deepEqual(
+    config.dns.servers.find(server => server.tag === 'local'),
+    { tag: 'local', type: 'local' },
   )
+  const localSuffixIndex = config.dns.rules.findIndex(rule => rule.server === 'local' && rule.domain_suffix)
+  assert.deepEqual(config.dns.rules[localSuffixIndex], { domain_suffix: ['local'], server: 'local' })
+  const foreignIndex = config.dns.rules.findIndex(rule => rule.server === 'foreign')
+  const fakeIpIndex = config.dns.rules.findIndex(rule => rule.server === 'fakeip' && rule.rewrite_ttl)
+  assert.ok(localSuffixIndex < foreignIndex)
+  assert.ok(localSuffixIndex < fakeIpIndex)
+  assert.ok(!JSON.stringify(config).includes('split-dns'))
+  const stale = await render('sing-box', {
+    splitDnsDomain: 'repo.example.invalid',
+    splitDnsServer: '192.0.2.53',
+  })
+  assert.deepEqual(stale, config)
+  const noAdblock = await render('sing-box', { profile: 'no-adblock' })
+  assert.deepEqual(noAdblock.dns.rules[0], { domain_suffix: ['local'], server: 'local' })
 })
 
 test('renders a native Egern profile with matching groups and remote rule sets', async () => {
