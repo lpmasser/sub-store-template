@@ -19,6 +19,7 @@ Egern 的 `auto_update.url` 由线上 SubStore File 的私有 Script Operator �
 
 共享分组采用“业务策略 → 稳定出口 → 协议节点”两级选择结构。业务策略完整保留；出口只使用普通 selector，VLESS 为默认、Hysteria2 为手动备用。
 美国与亚太 VPS 管理流量使用独立策略组，分别默认经 DMIT Pro 和 ISIF JP 中转，并保留手动直连选项。
+公司新加坡 VPS 使用独立管理策略组，默认直连，可手动切换到 ISIF JP、DMIT Pro 或 DMIT EB。
 
 所有客户端节点都来自同一个 SubStore Collection。Egern 输出使用原生 `proxies`、`policy_groups` 和 `rules`，不套用 Clash 配置。美国家宽的 DMIT Pro 与 DMIT EB 路径都由对应 Host 在服务端转发，模板不生成客户端链式代理，也不读取额外的私密节点快照。
 

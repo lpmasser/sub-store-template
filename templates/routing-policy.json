@@ -31,6 +31,7 @@
     {"tag": "🎮 Steam", "members": ["🚀 默认代理", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 美国家宽", "🏠 QQPW家宽"], "default": "🚀 默认代理"},
     {"tag": "VPS管理-美国", "members": ["🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "DIRECT"], "default": "🇺🇸 DMIT Pro"},
     {"tag": "VPS管理-亚太", "members": ["🇯🇵 ISIF JP", "DIRECT", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB"], "default": "🇯🇵 ISIF JP"},
+    {"tag": "VPS管理-公司新加坡", "members": ["DIRECT", "🇯🇵 ISIF JP", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB"], "default": "DIRECT"},
     {"tag": "🐟 漏网之鱼", "members": ["🚀 默认代理", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 美国家宽", "🏠 QQPW家宽", "DIRECT"], "default": "🚀 默认代理"},
     {"tag": "🇺🇸 DMIT Pro", "match": "dmitpro", "default": "[自建]dmitpro-vless[美国.LAX]"},
     {"tag": "🇺🇸 DMIT EB", "match": "dmiteb", "default": "[自建]dmiteb-vless"},
@@ -46,7 +47,8 @@
       {"type": "domain_suffix", "values": ["palantir.com", "palantirfoundry.com", "palantirfoundry.co.uk", "palantircloud.com", "palantirapollo.com"], "policy": "🔮 Palantir"},
       {"type": "domain_suffix", "values": ["augmentcode.com", "windsurf.com", "codeium.com", "openrouter.ai"], "policy": "🧠 AI"},
       {"type": "ip_cidr", "values": ["154.21.86.201/32", "154.17.227.251/32", "152.53.81.181/32", "23.81.118.181/32"], "policy": "VPS管理-美国"},
-      {"type": "ip_cidr", "values": ["45.129.8.190/32", "152.175.36.149/32"], "policy": "VPS管理-亚太"}
+      {"type": "ip_cidr", "values": ["45.129.8.190/32", "152.175.36.149/32"], "policy": "VPS管理-亚太"},
+      {"type": "ip_cidr", "values": ["43.98.163.231/32"], "policy": "VPS管理-公司新加坡"}
     ],
     "ruleSets": [
       {"tag": "geosite-adblock", "singBoxUrl": "https://raw.githubusercontent.com/lpmasser/sub-store-template/main/rules/hagezi-pro.srs", "artifact": "hagezi-pro", "egernPolicy": "REJECT", "singBoxDns": "nxdomain"},

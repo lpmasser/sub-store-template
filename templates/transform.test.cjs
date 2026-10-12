@@ -150,8 +150,8 @@ function assertManagementOrder(groups, tagKey) {
   const tags = groups.map(group => group[tagKey])
   const catchAllIndex = tags.indexOf('🐟 漏网之鱼')
   assert.deepEqual(
-    tags.slice(catchAllIndex - 2, catchAllIndex + 1),
-    ['VPS管理-美国', 'VPS管理-亚太', '🐟 漏网之鱼'],
+    tags.slice(catchAllIndex - 3, catchAllIndex + 1),
+    ['VPS管理-美国', 'VPS管理-亚太', 'VPS管理-公司新加坡', '🐟 漏网之鱼'],
   )
 }
 
@@ -273,7 +273,7 @@ test('renders the sing-box profile from ten ordinary nodes', async () => {
   const fakeIpServer = config.dns.servers.find(server => server.type === 'fakeip')
 
   assert.equal(nodes.length, 10)
-  assert.equal(groups.length, 23)
+  assert.equal(groups.length, 24)
   assert.ok(nodes.every(node => !Object.hasOwn(node, 'detour')))
   assertDefaults(groups, 'tag', 'outbounds', 'default', '🎯 直连')
   assertManagementOrder(groups, 'tag')
@@ -464,7 +464,7 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   })
   assert.ok(config.proxies.every(proxy => Object.values(proxy)[0].name))
   assert.ok(config.proxies.every(proxy => !Object.hasOwn(Object.values(proxy)[0], 'prev_hop')))
-  assert.equal(groups.length, 23)
+  assert.equal(groups.length, 24)
   assert.ok(config.policy_groups.every(group => Object.keys(group).join() === 'select'))
   assertManagementOrder(groups, 'name')
   assert.equal(groups.find(group => group.name === '🚀 默认代理').policies[0], '🇺🇸 DMIT Pro')
@@ -484,7 +484,7 @@ test('renders a native Egern profile with matching groups and remote rule sets',
     rule.update_interval === 86400
   )))
   assert.equal(remoteRules[0].policy, 'REJECT')
-  assert.equal(config.rules.length, 54)
+  assert.equal(config.rules.length, 55)
   assert.deepEqual(
     config.rules
       .filter(rule => rule.domain_suffix?.policy === '🔮 Palantir')
