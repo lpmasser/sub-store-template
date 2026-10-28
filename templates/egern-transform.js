@@ -9,13 +9,23 @@ const policy = JSON.parse(await produceArtifact({
   name: 'routing-policy',
   type: 'file',
 }))
-const output = await produceArtifact({
+const sourceNodes = await produceArtifact({
   name: policy.collection,
   type: 'collection',
-  platform: 'Egern',
-  produceOpts: { prettyYaml: true },
+  platform: 'JSON',
+  produceType: 'internal',
 })
+const output = ProxyUtils.produce(sourceNodes, 'Egern', { prettyYaml: true })
 const proxies = ProxyUtils.yaml.safeLoad(output).proxies || []
+// SubStore's Egern producer drops the leaf certificate pin.
+for (const proxy of proxies) {
+  if (!proxy.hysteria2) continue
+  const source = sourceNodes.find(node => node.name === proxy.hysteria2.name)
+  if (source?.['tls-fingerprint']) {
+    proxy.hysteria2.fingerprint_sha256 = source['tls-fingerprint']
+    delete proxy.hysteria2.skip_tls_verify
+  }
+}
 const proxyTags = proxies.map(getProxyName)
 const groups = buildGroups(policy, proxyTags)
 
@@ -79,9 +89,14 @@ function renderConfig(config, candidate, nodes, groups) {
   }
   config.proxies = nodes
   config.policy_groups = groups.map(group => ({
-    select: {
+    [group.type === 'auto' ? 'auto_test' : 'select']: {
       name: group.tag,
       policies: group.members.map(member => mapPolicy(member, candidate)),
+      ...(group.type === 'auto' ? {
+        latency_test_url: candidate.healthCheck.url,
+        interval: candidate.healthCheck.intervalSeconds,
+        tolerance: candidate.healthCheck.toleranceMs,
+      } : {}),
     },
   }))
 

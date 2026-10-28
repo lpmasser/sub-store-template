@@ -21,6 +21,10 @@ const proxies = await produceArtifact({
   platform: 'sing-box',
   produceType: 'internal',
 })
+// SubStore currently emits both port forms; sing-box uses the hopping range.
+for (const proxy of proxies) {
+  if (proxy.type === 'hysteria2' && proxy.server_ports?.length) delete proxy.server_port
+}
 const proxyTags = proxies.map(proxy => proxy.tag)
 const groups = buildGroups(policy, proxyTags)
 
@@ -72,9 +76,13 @@ function mapPolicy(tag, candidate) {
 function renderConfig(config, candidate, nodes, groups) {
   const selectors = groups.map(group => ({
     tag: group.tag,
-    type: 'selector',
+    type: group.type === 'auto' ? 'urltest' : 'selector',
     outbounds: group.members.map(member => mapPolicy(member, candidate)),
-    ...(group.default ? { default: mapPolicy(group.default, candidate) } : {}),
+    ...(group.type === 'auto' ? {
+      url: candidate.healthCheck.url,
+      interval: `${candidate.healthCheck.intervalSeconds}s`,
+      tolerance: candidate.healthCheck.toleranceMs,
+    } : group.default ? { default: mapPolicy(group.default, candidate) } : {}),
   }))
   config.outbounds = [...selectors, ...(config.outbounds || []), ...nodes]
 
