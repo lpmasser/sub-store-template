@@ -467,8 +467,8 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   assert.ok(config.proxies.every(proxy => Object.values(proxy)[0].name))
   assert.ok(config.proxies.every(proxy => !Object.hasOwn(Object.values(proxy)[0], 'prev_hop')))
   assert.equal(groups.length, 23)
-  assert.equal(config.policy_groups.filter(group => group.auto_test).length, 3)
-  assert.ok(config.policy_groups.find(group => group.select?.name === '🇯🇵 ISIF JP'))
+  assert.equal(config.policy_groups.filter(group => group.auto_test).length, 4)
+  assert.ok(config.policy_groups.find(group => group.auto_test?.name === '🇯🇵 ISIF JP'))
   assertManagementOrder(groups, 'name')
   assert.equal(groups.find(group => group.name === '🚀 默认代理').policies[0], '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group.name === '🧠 AI').policies[0], '🏠 美国家宽')
@@ -519,10 +519,10 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   assert.deepEqual(config.rules.at(-1), { default: { policy: '🐟 漏网之鱼' } })
 })
 
-test('automatically checks DMIT and residential paths while preserving ISIF selection', async () => {
+test('automatically checks each egress and residential paths', async () => {
   const config = await render('sing-box')
   const automatic = config.outbounds.filter(node => node.type === 'urltest')
-  assert.deepEqual(automatic.map(node => node.tag), ['🇺🇸 DMIT Pro', '🇺🇸 DMIT EB', '🏠 美国家宽'])
+  assert.deepEqual(automatic.map(node => node.tag), ['🇺🇸 DMIT Pro', '🇺🇸 DMIT EB', '🇯🇵 ISIF JP', '🏠 美国家宽'])
   for (const node of automatic) {
     assert.equal(node.interval, '60s')
     assert.equal(node.url, 'https://www.gstatic.com/generate_204')
@@ -530,7 +530,7 @@ test('automatically checks DMIT and residential paths while preserving ISIF sele
     assert.ok(!Object.hasOwn(node, 'default'))
   }
   assert.equal(automatic[0].outbounds[0], '[自建]dmitpro-hy2[美国.LAX]')
-  assert.equal(config.outbounds.find(node => node.tag === '🇯🇵 ISIF JP').type, 'selector')
+  assert.equal(config.outbounds.find(node => node.tag === '🇯🇵 ISIF JP').type, 'urltest')
   assert.ok(!JSON.stringify(config).includes('QQPW'))
   const egern = await render('egern')
   for (const proxy of egern.proxies.filter(node => node.hysteria2?.name.includes('Hy2'))) {

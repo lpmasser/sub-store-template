@@ -35,7 +35,7 @@
     {"tag": "🐟 漏网之鱼", "members": ["🚀 默认代理", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 美国家宽", "DIRECT"], "default": "🚀 默认代理"},
     {"tag": "🇺🇸 DMIT Pro", "type": "auto", "match": "dmitpro", "default": "[自建]dmitpro-hy2[美国.LAX]"},
     {"tag": "🇺🇸 DMIT EB", "type": "auto", "match": "dmiteb", "default": "[自建]dmiteb-hy2"},
-    {"tag": "🇯🇵 ISIF JP", "match": "isifjp", "default": "[自建]isifjp-vless"},
+    {"tag": "🇯🇵 ISIF JP", "type": "auto", "match": "isifjp", "default": "[自建]isifjp-hy2"},
     {"tag": "🏠 美国家宽", "type": "auto", "match": "home", "default": "[自建][家宽拼车]Vircs-SS[经DMIT Pro Hy2]"}
   ],
   "routing": {

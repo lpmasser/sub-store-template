@@ -17,7 +17,7 @@ sing-box 渲染器支持 Script Operator 参数 `profile=no-adblock`。该 profi
 
 Egern 的 `auto_update.url` 由线上 SubStore File 的私有 Script Operator 参数 `autoUpdateUrl` 注入；本公开仓库只保存注入逻辑和测试占位值，不保存实际分享 URL。
 
-共享分组采用“业务策略 → 稳定出口 → 协议节点”两级选择结构。业务策略完整保留；DMIT Pro、DMIT EB 与美国家宽使用原生健康探测自动选择可用线路（sing-box `urltest` / Egern `auto_test`），每 60 秒检查一次，100 ms 容差减少来回切换，Hy2 排在初始候选首位；这不是严格固定优先级的 fallback。ISIF JP 仍保持原 selector。QQPW 家宽已移除。
+共享分组采用“业务策略 → 稳定出口 → 协议节点”两级选择结构。业务策略完整保留；DMIT Pro、DMIT EB、ISIF JP 与美国家宽使用原生健康探测自动选择可用线路（sing-box `urltest` / Egern `auto_test`），每 60 秒检查一次，100 ms 容差减少来回切换，Hy2 排在初始候选首位；这不是严格固定优先级的 fallback。ISIF JP 重装后已恢复 Hy2，并参与同样的自动选路。QQPW 家宽已移除。
 美国与亚太 VPS 管理流量使用独立策略组，分别默认经 DMIT Pro 和 ISIF JP 中转，并保留手动直连选项。
 公司新加坡 VPS 使用独立管理策略组，默认直连，可手动切换到 ISIF JP、DMIT Pro 或 DMIT EB。
 
