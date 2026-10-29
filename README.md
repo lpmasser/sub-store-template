@@ -17,11 +17,11 @@ sing-box 渲染器支持 Script Operator 参数 `profile=no-adblock`。该 profi
 
 Egern 的 `auto_update.url` 由线上 SubStore File 的私有 Script Operator 参数 `autoUpdateUrl` 注入；本公开仓库只保存注入逻辑和测试占位值，不保存实际分享 URL。
 
-共享分组采用“业务策略 → 稳定出口 → 协议节点”两级选择结构。业务策略完整保留；DMIT Pro、DMIT EB、ISIF JP 与美国家宽使用原生健康探测自动选择可用线路（sing-box `urltest` / Egern `auto_test`），每 60 秒检查一次，100 ms 容差减少来回切换，Hy2 排在初始候选首位；这不是严格固定优先级的 fallback。ISIF JP 重装后已恢复 Hy2，并参与同样的自动选路。QQPW 家宽已移除。
+共享分组采用“业务策略 → 稳定出口 → 协议节点”两级选择结构。业务策略完整保留；DMIT Pro、DMIT EB、ISIF JP、VIRCS家宽与AaiTR-Verizon家宽使用原生健康探测自动选择可用线路（sing-box `urltest` / Egern `auto_test`），每 60 秒检查一次，100 ms 容差减少来回切换，Hy2 排在初始候选首位；这不是严格固定优先级的 fallback。ISIF JP 重装后已恢复 Hy2，并参与同样的自动选路。QQPW 家宽已移除。原“美国家宽”改名为“VIRCS家宽”；AI、Palantir 原来默认使用家宽的策略改为“AaiTR-Verizon家宽”，其他业务原默认出口保持不变。
 美国与亚太 VPS 管理流量使用独立策略组，分别默认经 DMIT Pro 和 ISIF JP 中转，并保留手动直连选项。
 公司新加坡 VPS 使用独立管理策略组，默认直连，可手动切换到 ISIF JP、DMIT Pro 或 DMIT EB。
 
-所有客户端节点都来自同一个 SubStore Collection。Egern 输出使用原生 `proxies`、`policy_groups` 和 `rules`，不套用 Clash 配置。美国家宽的 DMIT Pro 与 DMIT EB 路径都由对应 Host 在服务端转发，每条路径同时提供原 VLESS 和新增 Hy2 入口，模板不生成客户端链式代理。Hy2 的端口范围及证书 pin 归节点输入；sing-box 移除转换器多余的单端口字段，Egern 显式保留原始节点的证书 SHA-256 pin，避免 SubStore 原生 Egern 转换丢失它。
+所有客户端节点都来自同一个 SubStore Collection。Egern 输出使用原生 `proxies`、`policy_groups` 和 `rules`，不套用 Clash 配置。两种家宽的 DMIT Pro 与 DMIT EB 路径都由对应 Host 在服务端转发，每条路径同时提供原 VLESS 和新增 Hy2 入口，模板不生成客户端链式代理。Hy2 的端口范围及证书 pin 归节点输入；sing-box 移除转换器多余的单端口字段，Egern 显式保留原始节点的证书 SHA-256 pin，避免 SubStore 原生 Egern 转换丢失它。
 
 sing-box 客户端保留 IPv4/IPv6 双栈 TUN，并按物理默认接口是否具有 `2000::/3` 地址处理本地解析范围：无公网 IPv6 时，AAAA/HTTPS 返回空的 `NOERROR` 响应，规则模式下来自 TUN 的国内字面量 IPv6 在 sniff 前快速拒绝；direct/global 模式保持原语义。`default_interface_address` 反映平台报告的默认接口，源码不保证自动排除 TUN；目前只能确认 SFM 的 direct dial 绑定 `en0`，真 IPv6 网络恢复行为仍需在 macOS 客户端实测。该处理基于已确认存在绕过系统 DNS 的字面量 IPv6，不把具体应用调用链写成确定根因。
 

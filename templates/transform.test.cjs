@@ -30,6 +30,10 @@ const proxyTags = [
   '[自建]dmitpro-vless[美国.LAX]',
   '[自建]isifjp-hy2',
   '[自建]isifjp-vless',
+  '[自建][家宽拼车]AaiTR-Verizon[经DMIT Pro Hy2]',
+  '[自建][家宽拼车]AaiTR-Verizon[经DMIT EB Hy2]',
+  '[自建][家宽拼车]AaiTR-Verizon[经DMIT Pro VLESS]',
+  '[自建][家宽拼车]AaiTR-Verizon[经DMIT EB VLESS]',
 ]
 const householdNodes = [
   '[自建][家宽拼车]Vircs-SS[经DMIT Pro Hy2]',
@@ -37,6 +41,7 @@ const householdNodes = [
   '[自建][家宽拼车]Vircs-SS[经DMIT Pro]',
   '[自建][家宽拼车]Vircs-SS[经DMIT EB Hy2]',
 ]
+const aaitrNodes = proxyTags.filter(tag => tag.includes('AaiTR-Verizon'))
 const fixturePin = 'a'.repeat(64)
 const fixtureNodes = proxyTags.map((name, index) => ({
   name, type: name.includes('hy2') || name.includes('Hy2') ? 'hysteria2' : 'vless',
@@ -137,14 +142,15 @@ function assertDefaults(groups, tagKey, membersKey, defaultKey, directTag) {
     assert.ok(group[membersKey].includes(group[defaultKey]), `${group[tagKey]} default must exist`)
   }
   assert.equal(groups.find(group => group[tagKey] === '🚀 默认代理')[defaultKey], '🇺🇸 DMIT Pro')
-  assert.equal(groups.find(group => group[tagKey] === '🧠 AI')[defaultKey], '🏠 美国家宽')
-  assert.equal(groups.find(group => group[tagKey] === '🔮 Palantir')[defaultKey], '🏠 美国家宽')
+  assert.equal(groups.find(group => group[tagKey] === '🧠 AI')[defaultKey], '🏠 AaiTR-Verizon家宽')
+  assert.equal(groups.find(group => group[tagKey] === '🔮 Palantir')[defaultKey], '🏠 AaiTR-Verizon家宽')
   assert.equal(groups.find(group => group[tagKey] === 'VPS管理-美国')[defaultKey], '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group[tagKey] === 'VPS管理-亚太')[defaultKey], '🇯🇵 ISIF JP')
-  assert.deepEqual(groups.find(group => group[tagKey] === '🏠 美国家宽')[membersKey], householdNodes)
+  assert.deepEqual(groups.find(group => group[tagKey] === '🏠 VIRCS家宽')[membersKey], householdNodes)
+  assert.deepEqual(groups.find(group => group[tagKey] === '🏠 AaiTR-Verizon家宽')[membersKey], aaitrNodes)
   assert.ok(!groups.some(group => group[tagKey] === '🏠 QQPW家宽'))
   const apple = groups.find(group => group[tagKey] === '🍏 Apple')
-  assert.equal(apple[membersKey].length, 6)
+  assert.equal(apple[membersKey].length, 7)
   assert.equal(apple[defaultKey], directTag)
 }
 
@@ -266,7 +272,7 @@ test('keeps private LAN exclusions except for the sing-box TUN IPv4 subnet', () 
   assert.ok(!Object.hasOwn(tun, 'dns_address'))
 })
 
-test('renders the sing-box profile from ten ordinary nodes', async () => {
+test('renders the sing-box profile from fourteen relay and ordinary nodes', async () => {
   const config = await render('sing-box')
   const nodes = config.outbounds.filter(outbound => proxyTags.includes(outbound.tag))
   const groups = config.outbounds.filter(outbound => ['selector', 'urltest'].includes(outbound.type))
@@ -274,8 +280,8 @@ test('renders the sing-box profile from ten ordinary nodes', async () => {
   const mixed = config.inbounds.find(inbound => inbound.type === 'mixed')
   const fakeIpServer = config.dns.servers.find(server => server.type === 'fakeip')
 
-  assert.equal(nodes.length, 10)
-  assert.equal(groups.length, 23)
+  assert.equal(nodes.length, 14)
+  assert.equal(groups.length, 24)
   assert.ok(nodes.every(node => !Object.hasOwn(node, 'detour')))
   assertDefaults(groups, 'tag', 'outbounds', 'default', '🎯 直连')
   assertManagementOrder(groups, 'tag')
@@ -459,23 +465,24 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   const groups = config.policy_groups.map(group => Object.values(group)[0])
   const remoteRules = config.rules.filter(rule => rule.rule_set).map(rule => rule.rule_set)
 
-  assert.equal(config.proxies.length, 10)
+  assert.equal(config.proxies.length, 14)
   assert.deepEqual(config.auto_update, {
     url: egernAutoUpdateUrl,
     interval: 86400,
   })
   assert.ok(config.proxies.every(proxy => Object.values(proxy)[0].name))
   assert.ok(config.proxies.every(proxy => !Object.hasOwn(Object.values(proxy)[0], 'prev_hop')))
-  assert.equal(groups.length, 23)
-  assert.equal(config.policy_groups.filter(group => group.auto_test).length, 4)
+  assert.equal(groups.length, 24)
+  assert.equal(config.policy_groups.filter(group => group.auto_test).length, 5)
   assert.ok(config.policy_groups.find(group => group.auto_test?.name === '🇯🇵 ISIF JP'))
   assertManagementOrder(groups, 'name')
   assert.equal(groups.find(group => group.name === '🚀 默认代理').policies[0], '🇺🇸 DMIT Pro')
-  assert.equal(groups.find(group => group.name === '🧠 AI').policies[0], '🏠 美国家宽')
-  assert.equal(groups.find(group => group.name === '🔮 Palantir').policies[0], '🏠 美国家宽')
+  assert.equal(groups.find(group => group.name === '🧠 AI').policies[0], '🏠 AaiTR-Verizon家宽')
+  assert.equal(groups.find(group => group.name === '🔮 Palantir').policies[0], '🏠 AaiTR-Verizon家宽')
   assert.equal(groups.find(group => group.name === 'VPS管理-美国').policies[0], '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group.name === 'VPS管理-亚太').policies[0], '🇯🇵 ISIF JP')
-  assert.deepEqual(groups.find(group => group.name === '🏠 美国家宽').policies, householdNodes)
+  assert.deepEqual(groups.find(group => group.name === '🏠 VIRCS家宽').policies, householdNodes)
+  assert.deepEqual(groups.find(group => group.name === '🏠 AaiTR-Verizon家宽').policies, aaitrNodes)
   assert.ok(!groups.some(group => group.name === '🏠 QQPW家宽'))
   assert.equal(groups.find(group => group.name === '🍏 Apple').policies[0], 'DIRECT')
 
@@ -522,7 +529,7 @@ test('renders a native Egern profile with matching groups and remote rule sets',
 test('automatically checks each egress and residential paths', async () => {
   const config = await render('sing-box')
   const automatic = config.outbounds.filter(node => node.type === 'urltest')
-  assert.deepEqual(automatic.map(node => node.tag), ['🇺🇸 DMIT Pro', '🇺🇸 DMIT EB', '🇯🇵 ISIF JP', '🏠 美国家宽'])
+  assert.deepEqual(automatic.map(node => node.tag), ['🇺🇸 DMIT Pro', '🇺🇸 DMIT EB', '🇯🇵 ISIF JP', '🏠 VIRCS家宽', '🏠 AaiTR-Verizon家宽'])
   for (const node of automatic) {
     assert.equal(node.interval, '60s')
     assert.equal(node.url, 'https://www.gstatic.com/generate_204')
