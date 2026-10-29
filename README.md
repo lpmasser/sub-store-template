@@ -28,6 +28,8 @@ sing-box 客户端保留 IPv4/IPv6 双栈 TUN，并按物理默认接口是否�
 
 TUN 的 `route_exclude_address` 继续排除 `10.0.0.0/8`、`192.168.0.0/16` 与 `172.16.0.0/12` 的其余地址，但从后者精确扣除 TUN 自用的 `172.19.0.0/30`。这样 `172.19.0.2` 虚拟 DNS 不会因整段私网排除而绕过 TUN，同时不改变其他 RFC 1918 地址的原有排除行为。
 
+学校 MotionPro VPN 网关 `cvpn.cupl.edu.cn` 的 IPv4 地址也作为单主机加入 TUN 排除，避免网关连接先进入 SFM、再被 MotionPro 的主机路由切换到物理网络。具体地址以模板为准；学校更换网关地址时需同步调整。默认和无去广告订阅共用此设置，Egern 不受影响。
+
 规则模式下，除 local DNS scope 和显式 foreign 例外之外，本应使用 FakeIP 的域名对 HTTPS 查询统一返回 `NOERROR` NODATA，A/AAAA 继续使用 FakeIP。这样会放弃 HTTPS/SVCB 首包中的地址 hint、ECH 和 H3 提示，避免真实地址绕过 FakeIP、路由和 selector；后续连接仍可通过实际应用协议自行协商。Apple、Anthropic/AI 和其他代理域名使用同一规则，不维护单域名补丁；Apple selector 仍默认直连但可切代理。相关 Apple 服务与真实 IPv6 网络仍需在 macOS 客户端实测。
 
 本地 DNS 使用内置 `type: local` 系统解析，不再固定单个上游 DNS 地址；系统 DNS 的可用性由客户端运行环境负责。模板首部的 `.local` 后缀规则将查询交给系统 local，不写具体公司域名或 IP，优先于模式规则、FakeIP 与公网 IPv6 空响应；完整默认输出仍保留原广告拒绝规则的优先级。

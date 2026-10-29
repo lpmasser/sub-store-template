@@ -60,7 +60,7 @@ const legacyRouteExcludeAddress = [
   '172.16.0.0/12',
   '192.168.0.0/16',
 ]
-const routeExcludeAddress = [
+const privateRouteExcludeAddress = [
   '10.0.0.0/8',
   '172.16.0.0/15',
   '172.18.0.0/16',
@@ -82,6 +82,8 @@ const routeExcludeAddress = [
   '172.24.0.0/13',
   '192.168.0.0/16',
 ]
+const motionProGatewayAddress = '123.124.17.242/32'
+const routeExcludeAddress = [...privateRouteExcludeAddress, motionProGatewayAddress]
 const egernRuleFields = new Set([
   'domain_set',
   'domain_suffix_set',
@@ -252,14 +254,15 @@ test('keeps private LAN exclusions except for the sing-box TUN IPv4 subnet', () 
   const fakeIpServer = config.dns.servers.find(server => server.type === 'fakeip')
   const removedTunSubnet = '172.19.0.0/30'
   const excludedRanges = tun.route_exclude_address.map(ipv4CidrRange)
+  const privateExclusions = tun.route_exclude_address.filter(address => address !== motionProGatewayAddress)
 
   assert.deepEqual(tun.route_exclude_address, routeExcludeAddress)
   assert.deepEqual(
-    normalizeIpv4Cidrs([...tun.route_exclude_address, removedTunSubnet]),
+    normalizeIpv4Cidrs([...privateExclusions, removedTunSubnet]),
     normalizeIpv4Cidrs(legacyRouteExcludeAddress),
   )
   assert.equal(
-    countIpv4Addresses(legacyRouteExcludeAddress) - countIpv4Addresses(tun.route_exclude_address),
+    countIpv4Addresses(legacyRouteExcludeAddress) - countIpv4Addresses(privateExclusions),
     4n,
   )
   assert.ok(excludedRanges.every(range => !rangesOverlap(range, ipv4CidrRange(removedTunSubnet))))
