@@ -281,7 +281,7 @@ test('renders the sing-box profile from fourteen relay and ordinary nodes', asyn
   const fakeIpServer = config.dns.servers.find(server => server.type === 'fakeip')
 
   assert.equal(nodes.length, 14)
-  assert.equal(groups.length, 24)
+  assert.equal(groups.length, 25)
   assert.ok(nodes.every(node => !Object.hasOwn(node, 'detour')))
   assertDefaults(groups, 'tag', 'outbounds', 'default', '🎯 直连')
   assertManagementOrder(groups, 'tag')
@@ -472,7 +472,7 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   })
   assert.ok(config.proxies.every(proxy => Object.values(proxy)[0].name))
   assert.ok(config.proxies.every(proxy => !Object.hasOwn(Object.values(proxy)[0], 'prev_hop')))
-  assert.equal(groups.length, 24)
+  assert.equal(groups.length, 25)
   assert.equal(config.policy_groups.filter(group => group.auto_test).length, 5)
   assert.ok(config.policy_groups.find(group => group.auto_test?.name === '🇯🇵 ISIF JP'))
   assertManagementOrder(groups, 'name')
@@ -494,7 +494,7 @@ test('renders a native Egern profile with matching groups and remote rule sets',
     rule.update_interval === 86400
   )))
   assert.equal(remoteRules[0].policy, 'REJECT')
-  assert.equal(config.rules.length, 55)
+  assert.equal(config.rules.length, 56)
   assert.deepEqual(
     config.rules
       .filter(rule => rule.domain_suffix?.policy === '🔮 Palantir')
