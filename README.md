@@ -15,6 +15,20 @@ SubStore 通过 GitHub Raw 读取 JSON 模板和分流策略，每个客户端�
 
 sing-box 渲染器支持 Script Operator 参数 `profile=no-adblock`。该 profile 复用同一份模板、节点、策略组和分流策略，只在渲染时移除 `geosite-adblock` 规则集；未传参数时保持默认去广告行为。
 
+### 可选公司内网接入
+
+sing-box 渲染器另有可选参数 `workAccessFile` 和 `intranet`。`workAccessFile` 指向 SubStore 私有 File，内容只保存在 SubStore，不进入本仓库；提供该 File 时默认按普通模式渲染（等同 `intranet=off`），`intranet=on` 启用内网模式。`intranet=on` 但未提供 `workAccessFile` 时渲染失败；未提供 `workAccessFile` 时输出与旧版完全一致。普通模式和内网模式由同一渲染器生成，本仓库只保存通用生成逻辑和示例值。
+
+私有 File 的字段契约（字段名固定，值由使用方填写）：
+
+- `office_networks`：办公室物理网卡所在的 IPv4 网段；渲染成 Wi-Fi 与以太网两条分别匹配的 OR 条件。
+- `company.ip_cidr`、`company.domain`、`company.domain_suffix`：公司内网 IPv4、域名和私有域名后缀；`company.dns`：公司 DNS 地址。
+- `projects[]`：每项包含 `name`、`ip_cidr`、`domain`、`domain_suffix`、`dns`；项目 DNS 与路由固定使用 `mac`，不随公司出口 selector 切换。
+- `tailscale`：sing-box `tailscale` endpoint 对象，至少包含 `type`、`tag`、`hostname`、`state_directory`、`system_interface`；`mac` 和 `backup` 的 `detour` 由渲染器设为它的 `tag`。
+- `mac`、`backup`：两个 sing-box 出站对象，包含 `type`、`tag` 及各自协议字段；渲染器生成默认 `mac`、可切到 `backup` 的“公司远程出口” selector。
+
+普通模式只在 DNS 规则最前加入公司私有 `domain_suffix` 的办公室本地解析规则和非办公室拒绝规则，其余公司域名保持公共解析。内网模式再生成 Tailscale endpoint、公司主备出口 selector、项目/公司 DNS 与业务路由，并把公司和项目的 IPv4 `ip_cidr` 从 TUN `route_exclude_address` 中精确扣除；TUN 自身网段保护和 MotionPro 网关等其余排除保持不变。
+
 Egern 的 `auto_update.url` 由线上 SubStore File 的私有 Script Operator 参数 `autoUpdateUrl` 注入；本公开仓库只保存注入逻辑和测试占位值，不保存实际分享 URL。
 
 共享分组采用“业务策略 → 稳定出口 → 协议节点”两级选择结构。业务策略完整保留；所有手动选择组（默认代理、业务分流、VPS 管理与漏网之鱼）都保留直连选项，默认选择不变；DMIT Pro、DMIT EB、ISIF JP、VIRCS家宽与AaiTR-Verizon家宽使用原生健康探测自动选择可用线路（sing-box `urltest` / Egern `auto_test`），每 60 秒检查一次，100 ms 容差减少来回切换，Hy2 排在初始候选首位；这不是严格固定优先级 fallback，自动测速组只放线路节点，不加入直连。ISIF JP 重装后已恢复 Hy2，并参与同样的自动选路。QQPW 家宽已移除。原“美国家宽”改名为“VIRCS家宽”；AI、Palantir 原来默认使用家宽的策略改为“AaiTR-Verizon家宽”，其他业务原默认出口保持不变。

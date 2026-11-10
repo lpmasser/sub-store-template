@@ -18,6 +18,57 @@ const transformSources = {
   egern: fs.readFileSync(path.join(directory, 'egern-transform.js'), 'utf8'),
 }
 const egernAutoUpdateUrl = 'https://example.invalid/share/file/egern-eloy?token=test-only'
+const workAccessFixture = {
+  office_networks: ['10.77.52.0/22'],
+  company: {
+    ip_cidr: ['10.77.0.0/16', '192.168.77.8/32'],
+    domain: ['git.example.test'],
+    domain_suffix: ['corp.local'],
+    dns: '192.168.77.8',
+  },
+  projects: [
+    {
+      name: 'example',
+      ip_cidr: ['10.88.1.2/32'],
+      domain: ['project.example.test'],
+      domain_suffix: [],
+      dns: '192.168.88.9',
+    },
+  ],
+  tailscale: {
+    type: 'tailscale',
+    tag: 'work-tailnet',
+    hostname: 'work-client',
+    state_directory: '/private/example/work-tailnet',
+    system_interface: false,
+  },
+  mac: {
+    type: 'shadowsocks',
+    tag: '公司 Mac',
+    server: '100.64.1.2',
+    server_port: 8388,
+    method: '2022-blake3-aes-128-gcm',
+    password: 'fixture-only',
+  },
+  backup: {
+    type: 'shadowsocks',
+    tag: '公司备用 181',
+    server: '100.64.1.3',
+    server_port: 8388,
+    method: '2022-blake3-aes-128-gcm',
+    password: 'fixture-only',
+  },
+}
+const workAccessArgs = { workAccessFile: 'work-access' }
+const intranetArgs = { ...workAccessArgs, intranet: 'on' }
+const officeRule = {
+  type: 'logical',
+  mode: 'or',
+  rules: [
+    { network_interface_address: { wifi: workAccessFixture.office_networks } },
+    { network_interface_address: { ethernet: workAccessFixture.office_networks } },
+  ],
+}
 
 const proxyTags = [
   '[自建]dmiteb-hy2',
@@ -106,6 +157,9 @@ async function render(target, scriptArguments = {}) {
     async request => {
       if (request.type === 'file' && request.name === 'routing-policy') {
         return JSON.stringify(policy)
+      }
+      if (request.type === 'file' && request.name === 'work-access') {
+        return JSON.stringify(workAccessFixture)
       }
       if (request.type !== 'collection' || request.name !== policy.collection) {
         throw new Error(`unexpected artifact request: ${JSON.stringify(request)}`)
@@ -205,6 +259,14 @@ function countIpv4Addresses(values) {
   return values
     .map(ipv4CidrRange)
     .reduce((total, range) => total + range.end - range.start + 1n, 0n)
+}
+
+function containsAddress(values, address) {
+  const target = ipv4CidrRange(address.includes('/') ? address : `${address}/32`)
+  return values.some(value => {
+    const range = ipv4CidrRange(value)
+    return range.start <= target.start && target.end <= range.end
+  })
 }
 
 test('uses the same canonical upstream for both client rule formats', () => {
@@ -465,6 +527,247 @@ test('resolves .local names through the system DNS server first', async () => {
   assert.deepEqual(stale, config)
   const noAdblock = await render('sing-box', { profile: 'no-adblock' })
   assert.deepEqual(noAdblock.dns.rules[0], { domain_suffix: ['local'], server: 'local' })
+})
+
+test('keeps the legacy sing-box output without a work access file', async () => {
+  const config = await render('sing-box')
+  assert.deepEqual(await render('sing-box', { profile: 'default' }), config)
+  assert.ok(!config.endpoints)
+  assert.ok(!config.dns.servers.some(server => server.tag.startsWith('work-')))
+  assert.ok(!config.dns.rules.some(rule => rule.server?.startsWith('work-')))
+  assert.ok(!config.outbounds.some(outbound => (
+    ['公司 Mac', '公司备用 181', '公司远程出口'].includes(outbound.tag)
+  )))
+  assert.ok(!JSON.stringify(config).includes('work-tailnet'))
+  await assert.rejects(
+    () => render('sing-box', { intranet: 'on' }),
+    /intranet=on 需要 workAccessFile/,
+  )
+})
+
+test('protects company suffixes before .local without remote objects when intranet is off', async () => {
+  const config = await render('sing-box', workAccessArgs)
+  const tun = config.inbounds.find(inbound => inbound.type === 'tun')
+  const localSuffixIndex = config.dns.rules.findIndex(rule => rule.server === 'local' && rule.domain_suffix)
+  const adblockIndex = config.dns.rules.findIndex(rule => rule.rule_set === 'geosite-adblock')
+
+  assert.deepEqual(config.dns.servers.filter(server => server.tag.startsWith('work-')), [{
+    tag: 'work-company-local',
+    type: 'udp',
+    server: '192.168.77.8',
+    detour: '🎯 直连',
+  }])
+  assert.deepEqual(config.dns.rules.slice(0, 2), [
+    {
+      type: 'logical',
+      mode: 'and',
+      rules: [officeRule, { domain_suffix: ['corp.local'] }],
+      server: 'work-company-local',
+    },
+    { domain_suffix: ['corp.local'], action: 'reject' },
+  ])
+  assert.ok(localSuffixIndex > 1)
+  assert.ok(adblockIndex > 1)
+  assert.ok(!config.dns.rules.some(rule => rule.server === 'work-company-remote'))
+  assert.ok(!JSON.stringify(config.dns.rules).includes('work-project-'))
+  assert.ok(!JSON.stringify(config.dns.rules.slice(0, 2)).includes('git.example.test'))
+  assert.ok(!config.endpoints)
+  assert.ok(!config.outbounds.some(outbound => (
+    ['公司 Mac', '公司备用 181', '公司远程出口'].includes(outbound.tag)
+  )))
+  assert.deepEqual(tun.route_exclude_address, routeExcludeAddress)
+})
+
+test('renders intranet routing, DNS and the physical NIC OR condition', async () => {
+  const config = await render('sing-box', intranetArgs)
+  const workServers = config.dns.servers.filter(server => server.tag.startsWith('work-'))
+  const projectDns = config.dns.rules.find(rule => rule.server === 'work-project-0')
+  const companyLocal = config.dns.rules.find(rule => rule.server === 'work-company-local')
+  const companyRemote = config.dns.rules.find(rule => rule.server === 'work-company-remote')
+  const localSuffixIndex = config.dns.rules.findIndex(rule => rule.server === 'local' && rule.domain_suffix)
+  const fakeIpIndex = config.dns.rules.findIndex(rule => rule.server === 'fakeip' && rule.rewrite_ttl)
+  const projectDnsIndex = config.dns.rules.indexOf(projectDns)
+  const companyLocalIndex = config.dns.rules.indexOf(companyLocal)
+  const companyRemoteIndex = config.dns.rules.indexOf(companyRemote)
+
+  assert.deepEqual(workServers, [
+    { tag: 'work-company-local', type: 'udp', server: '192.168.77.8', detour: '🎯 直连' },
+    { tag: 'work-company-remote', type: 'udp', server: '192.168.77.8', detour: '公司远程出口' },
+    { tag: 'work-project-0', type: 'udp', server: '192.168.88.9', detour: '公司 Mac' },
+  ])
+  assert.deepEqual(projectDns, { domain: ['project.example.test'], server: 'work-project-0' })
+  assert.deepEqual(companyLocal, {
+    type: 'logical',
+    mode: 'and',
+    rules: [officeRule, {
+      type: 'logical',
+      mode: 'or',
+      rules: [
+        { domain: ['git.example.test'] },
+        { domain_suffix: ['corp.local'] },
+      ],
+    }],
+    server: 'work-company-local',
+  })
+  assert.deepEqual(companyRemote, {
+    type: 'logical',
+    mode: 'or',
+    rules: [{ domain: ['git.example.test'] }, { domain_suffix: ['corp.local'] }],
+    server: 'work-company-remote',
+  })
+  assert.deepEqual(
+    companyLocal.rules[0].rules.map(rule => Object.keys(rule.network_interface_address)),
+    [['wifi'], ['ethernet']],
+  )
+  assert.ok(projectDnsIndex < companyLocalIndex)
+  assert.ok(companyLocalIndex < companyRemoteIndex)
+  assert.ok(companyRemoteIndex < localSuffixIndex)
+  assert.ok(localSuffixIndex < fakeIpIndex)
+
+  const projectIp = config.route.rules.find(rule => rule.ip_cidr?.[0] === '10.88.1.2/32')
+  const projectDomain = config.route.rules.find(rule => rule.domain?.[0] === 'project.example.test')
+  const companyDirect = config.route.rules.find(rule => (
+    rule.type === 'logical' && rule.outbound === '🎯 直连'
+  ))
+  const companyRemoteIp = config.route.rules.find(rule => (
+    rule.outbound === '公司远程出口' && rule.ip_cidr
+  ))
+  const companyRemoteDomain = config.route.rules.find(rule => (
+    rule.outbound === '公司远程出口' && rule.domain
+  ))
+  const companyRemoteSuffix = config.route.rules.find(rule => (
+    rule.outbound === '公司远程出口' && rule.domain_suffix
+  ))
+  const hijackIndex = config.route.rules.findIndex(rule => rule.action === 'hijack-dns')
+  const privateIndex = config.route.rules.findIndex(rule => rule.ip_is_private === true)
+
+  assert.deepEqual(projectIp, { ip_cidr: ['10.88.1.2/32'], outbound: '公司 Mac' })
+  assert.deepEqual(projectDomain, { domain: ['project.example.test'], outbound: '公司 Mac' })
+  assert.deepEqual(companyDirect, {
+    type: 'logical',
+    mode: 'and',
+    rules: [officeRule, {
+      type: 'logical',
+      mode: 'or',
+      rules: [
+        { ip_cidr: ['10.77.0.0/16', '192.168.77.8/32'] },
+        { domain: ['git.example.test'] },
+        { domain_suffix: ['corp.local'] },
+      ],
+    }],
+    outbound: '🎯 直连',
+  })
+  assert.deepEqual(companyRemoteIp, {
+    ip_cidr: ['10.77.0.0/16', '192.168.77.8/32'],
+    outbound: '公司远程出口',
+  })
+  assert.deepEqual(companyRemoteDomain, {
+    domain: ['git.example.test'],
+    outbound: '公司远程出口',
+  })
+  assert.deepEqual(companyRemoteSuffix, {
+    domain_suffix: ['corp.local'],
+    outbound: '公司远程出口',
+  })
+  assert.ok(hijackIndex < config.route.rules.indexOf(projectIp))
+  assert.ok(config.route.rules.indexOf(projectIp) < config.route.rules.indexOf(companyDirect))
+  assert.ok(config.route.rules.indexOf(companyDirect) < config.route.rules.indexOf(companyRemoteIp))
+  assert.ok(config.route.rules.indexOf(companyRemoteSuffix) < privateIndex)
+  assert.equal(config.route.rules[0].action, 'reject')
+
+  assert.deepEqual(config.endpoints, [workAccessFixture.tailscale])
+  assert.deepEqual(config.outbounds.find(outbound => outbound.tag === '公司 Mac'), {
+    ...workAccessFixture.mac,
+    detour: 'work-tailnet',
+  })
+  assert.deepEqual(config.outbounds.find(outbound => outbound.tag === '公司备用 181'), {
+    ...workAccessFixture.backup,
+    detour: 'work-tailnet',
+  })
+  assert.deepEqual(config.outbounds.find(outbound => outbound.tag === '公司远程出口'), {
+    tag: '公司远程出口',
+    type: 'selector',
+    outbounds: ['公司 Mac', '公司备用 181'],
+    default: '公司 Mac',
+    interrupt_exist_connections: true,
+  })
+})
+
+test('subtracts only selected company and project IPv4 ranges from TUN exclusions', async () => {
+  const config = await render('sing-box', intranetArgs)
+  const tun = config.inbounds.find(inbound => inbound.type === 'tun')
+  const excluded = tun.route_exclude_address
+  const reserved = [
+    ...workAccessFixture.company.ip_cidr,
+    ...workAccessFixture.projects.flatMap(project => project.ip_cidr),
+  ]
+
+  for (const value of excluded) {
+    for (const removal of reserved) {
+      assert.ok(
+        !rangesOverlap(ipv4CidrRange(value), ipv4CidrRange(removal)),
+        `${value} must not overlap ${removal}`,
+      )
+    }
+  }
+  assert.ok(!containsAddress(excluded, '10.77.1.1'))
+  assert.ok(!containsAddress(excluded, '192.168.77.8'))
+  assert.ok(!containsAddress(excluded, '10.88.1.2'))
+  assert.ok(containsAddress(excluded, '10.0.0.1'))
+  assert.ok(containsAddress(excluded, '172.16.0.1'))
+  assert.ok(containsAddress(excluded, '192.168.1.10'))
+  assert.ok(containsAddress(excluded, motionProGatewayAddress))
+  assert.ok(!containsAddress(excluded, '172.19.0.2'))
+  assert.ok(excluded.every(value => !value.includes(':')))
+  assert.ok(excluded.every(value => (
+    !rangesOverlap(ipv4CidrRange(value), ipv4CidrRange('172.19.0.0/30'))
+  )))
+  assert.equal(
+    countIpv4Addresses(excluded),
+    countIpv4Addresses(routeExcludeAddress) - 65538n,
+  )
+  assert.deepEqual(
+    config.inbounds.find(inbound => inbound.type === 'mixed'),
+    templates['sing-box'].inbounds.find(inbound => inbound.type === 'mixed'),
+  )
+})
+
+test('keeps both ad profiles with intranet routing', async () => {
+  const onDefault = await render('sing-box', intranetArgs)
+  const onNoAdblock = await render('sing-box', { ...intranetArgs, profile: 'no-adblock' })
+  const expected = structuredClone(onDefault)
+
+  expected.dns.rules = expected.dns.rules.filter(rule => rule.rule_set !== 'geosite-adblock')
+  expected.route.rule_set = expected.route.rule_set.filter(
+    ruleSet => ruleSet.tag !== 'geosite-adblock',
+  )
+
+  assert.ok(onDefault.dns.rules.some(rule => rule.rule_set === 'geosite-adblock'))
+  assert.deepEqual(onNoAdblock, expected)
+  assert.ok(!onNoAdblock.dns.rules.some(rule => rule.rule_set === 'geosite-adblock'))
+  assert.deepEqual(onNoAdblock.dns.servers, onDefault.dns.servers)
+  assert.deepEqual(
+    onNoAdblock.dns.rules.filter(rule => rule.server?.startsWith('work-')),
+    onDefault.dns.rules.filter(rule => rule.server?.startsWith('work-')),
+  )
+
+  const offNoAdblock = await render('sing-box', { ...workAccessArgs, profile: 'no-adblock' })
+  assert.ok(!offNoAdblock.dns.rules.some(rule => rule.rule_set === 'geosite-adblock'))
+  assert.deepEqual(offNoAdblock.dns.rules.slice(0, 2), [
+    {
+      type: 'logical',
+      mode: 'and',
+      rules: [officeRule, { domain_suffix: ['corp.local'] }],
+      server: 'work-company-local',
+    },
+    { domain_suffix: ['corp.local'], action: 'reject' },
+  ])
+})
+
+test('keeps Egern output independent of work access arguments', async () => {
+  const baseline = await render('egern')
+  assert.deepEqual(await render('egern', intranetArgs), baseline)
+  assert.ok(!JSON.stringify(baseline).includes('公司远程出口'))
 })
 
 test('renders a native Egern profile with matching groups and remote rule sets', async () => {
