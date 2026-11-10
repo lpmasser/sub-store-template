@@ -139,7 +139,11 @@ async function render(target, scriptArguments = {}) {
 
 function assertDefaults(groups, tagKey, membersKey, defaultKey, directTag) {
   for (const group of groups) {
-    if (group.type === 'urltest') continue
+    if (group.type === 'urltest') {
+      assert.ok(!group[membersKey].includes(directTag), `${group[tagKey]} must not contain direct`)
+      continue
+    }
+    assert.ok(group[membersKey].includes(directTag), `${group[tagKey]} must contain direct`)
     assert.ok(group[defaultKey], `${group[tagKey]} must declare a default`)
     assert.ok(group[membersKey].includes(group[defaultKey]), `${group[tagKey]} default must exist`)
   }
@@ -477,6 +481,14 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   assert.ok(config.proxies.every(proxy => !Object.hasOwn(Object.values(proxy)[0], 'prev_hop')))
   assert.equal(groups.length, 25)
   assert.equal(config.policy_groups.filter(group => group.auto_test).length, 5)
+  for (const entry of config.policy_groups) {
+    const [type, group] = Object.entries(entry)[0]
+    if (type === 'auto_test') {
+      assert.ok(!group.policies.includes('DIRECT'), `${group.name} 自动测速组不得包含直连`)
+    } else {
+      assert.ok(group.policies.includes('DIRECT'), `${group.name} 手动选择组必须包含直连`)
+    }
+  }
   assert.ok(config.policy_groups.find(group => group.auto_test?.name === '🇯🇵 ISIF JP'))
   assertManagementOrder(groups, 'name')
   assert.equal(groups.find(group => group.name === '🚀 默认代理').policies[0], '🇺🇸 DMIT Pro')
