@@ -17,7 +17,7 @@ sing-box 渲染器支持 Script Operator 参数 `profile=no-adblock`。该 profi
 
 ### 可选公司内网接入
 
-sing-box 渲染器另有可选参数 `workAccessFile` 和 `intranet`。`workAccessFile` 指向 SubStore 私有 File，内容只保存在 SubStore，不进入本仓库；提供该 File 时默认按普通模式渲染（等同 `intranet=off`），`intranet=on` 启用内网模式。`intranet=on` 但未提供 `workAccessFile` 时渲染失败；未提供 `workAccessFile` 时输出与旧版完全一致。普通模式和内网模式由同一渲染器生成，本仓库只保存通用生成逻辑和示例值。
+sing-box 渲染器另有可选参数 `workAccessFile` 和 `intranet`。`workAccessFile` 引用调用方私有配置生成的 SubStore File；权威输入由调用方私有仓维护，地址/凭据不进本公开仓。提供该 File 时默认按普通模式渲染（等同 `intranet=off`），`intranet=on` 启用内网模式。`intranet=on` 但未提供 `workAccessFile` 时渲染失败；未提供 `workAccessFile` 时输出与旧版完全一致。普通模式和内网模式由同一渲染器生成，本仓库只保存通用生成逻辑和示例值。
 
 私有 File 的字段契约（字段名固定，值由使用方填写）：
 
