@@ -555,7 +555,6 @@ test('protects company suffixes before .local without remote objects when intran
     tag: 'work-company-local',
     type: 'udp',
     server: '192.168.77.8',
-    detour: '🎯 直连',
   }])
   assert.deepEqual(config.dns.rules.slice(0, 2), [
     {
@@ -591,7 +590,7 @@ test('renders intranet routing, DNS and the physical NIC OR condition', async ()
   const companyRemoteIndex = config.dns.rules.indexOf(companyRemote)
 
   assert.deepEqual(workServers, [
-    { tag: 'work-company-local', type: 'udp', server: '192.168.77.8', detour: '🎯 直连' },
+    { tag: 'work-company-local', type: 'udp', server: '192.168.77.8' },
     { tag: 'work-company-remote', type: 'udp', server: '192.168.77.8', detour: '公司远程出口' },
     { tag: 'work-project-0', type: 'udp', server: '192.168.88.9', detour: '公司 Mac' },
   ])

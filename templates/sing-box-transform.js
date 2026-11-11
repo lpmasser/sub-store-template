@@ -179,7 +179,6 @@ function buildWorkAccess(candidate, access, intranet) {
     tag: 'work-company-local',
     type: 'udp',
     server: access.company.dns,
-    detour: candidate.singBoxDirectTag,
   }]
 
   if (!intranet) {
