@@ -193,11 +193,8 @@ async function render(target, scriptArguments = {}) {
 
 function assertDefaults(groups, tagKey, membersKey, defaultKey, directTag) {
   for (const group of groups) {
-    if (group.type === 'urltest') {
-      assert.ok(!group[membersKey].includes(directTag), `${group[tagKey]} must not contain direct`)
-      continue
-    }
-    assert.ok(group[membersKey].includes(directTag), `${group[tagKey]} must contain direct`)
+    const lineGroup = proxyTags.includes(group[defaultKey])
+    assert.equal(group[membersKey].includes(directTag), !lineGroup, group[tagKey])
     assert.ok(group[defaultKey], `${group[tagKey]} must declare a default`)
     assert.ok(group[membersKey].includes(group[defaultKey]), `${group[tagKey]} default must exist`)
   }
@@ -843,18 +840,16 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   assert.deepEqual(config.rules.at(-1), { default: { policy: '🐟 漏网之鱼' } })
 })
 
-test('automatically checks each egress and residential paths', async () => {
+test('uses manual selectors for every sing-box line group with Hy2 selected by default', async () => {
   const config = await render('sing-box')
-  const automatic = config.outbounds.filter(node => node.type === 'urltest')
-  assert.deepEqual(automatic.map(node => node.tag), ['🇺🇸 DMIT Pro', '🇺🇸 DMIT EB', '🇯🇵 ISIF JP', '🏠 VIRCS家宽', '🏠 AaiTR-Verizon家宽'])
-  for (const node of automatic) {
-    assert.equal(node.interval, '60s')
-    assert.equal(node.url, 'https://www.gstatic.com/generate_204')
-    assert.equal(node.tolerance, 100)
-    assert.ok(!Object.hasOwn(node, 'default'))
+  assert.ok(!config.outbounds.some(node => node.type === 'urltest'))
+  for (const tag of ['🇺🇸 DMIT Pro', '🇺🇸 DMIT EB', '🇯🇵 ISIF JP', '🏠 VIRCS家宽', '🏠 AaiTR-Verizon家宽']) {
+    const node = config.outbounds.find(item => item.tag === tag)
+    assert.equal(node.type, 'selector')
+    assert.equal(node.default, node.outbounds[0])
+    assert.match(node.default, /hy2/i)
+    assert.ok(node.outbounds.every(member => proxyTags.includes(member)))
   }
-  assert.equal(automatic[0].outbounds[0], '[自建]dmitpro-hy2[美国.LAX]')
-  assert.equal(config.outbounds.find(node => node.tag === '🇯🇵 ISIF JP').type, 'urltest')
   assert.ok(!JSON.stringify(config).includes('QQPW'))
   const egern = await render('egern')
   for (const proxy of egern.proxies.filter(node => node.hysteria2?.name.includes('Hy2'))) {

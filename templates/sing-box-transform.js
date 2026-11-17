@@ -83,13 +83,9 @@ function renderConfig(config, candidate, nodes, groups, workAccess, intranet) {
   const work = workAccess ? buildWorkAccess(candidate, workAccess, intranet) : null
   const selectors = groups.map(group => ({
     tag: group.tag,
-    type: group.type === 'auto' ? 'urltest' : 'selector',
+    type: 'selector',
     outbounds: group.members.map(member => mapPolicy(member, candidate)),
-    ...(group.type === 'auto' ? {
-      url: candidate.healthCheck.url,
-      interval: `${candidate.healthCheck.intervalSeconds}s`,
-      tolerance: candidate.healthCheck.toleranceMs,
-    } : group.default ? { default: mapPolicy(group.default, candidate) } : {}),
+    ...(group.default ? { default: mapPolicy(group.default, candidate) } : {}),
   }))
   config.outbounds = [...selectors, ...(config.outbounds || []), ...nodes]
   if (intranet) {
