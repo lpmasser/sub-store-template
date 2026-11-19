@@ -39,6 +39,7 @@ $content = JSON.stringify(renderConfig(template, policy, proxies, groups, workAc
 function buildGroups(candidate, nodes) {
   const groups = candidate.groups.map(group => ({
     ...group,
+    default: group.singBoxDefault ?? group.default,
     members: unique([
       ...(group.members || []),
       ...matchNodes(candidate.patterns[group.match], nodes),

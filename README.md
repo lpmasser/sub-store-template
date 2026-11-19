@@ -31,7 +31,7 @@ sing-box 渲染器另有可选参数 `workAccessFile` 和 `intranet`。`workAcce
 
 Egern 的 `auto_update.url` 由线上 SubStore File 的私有 Script Operator 参数 `autoUpdateUrl` 注入；本公开仓库只保存注入逻辑和测试占位值，不保存实际分享 URL。
 
-共享分组采用“业务策略 → 稳定出口 → 协议节点”两级选择结构。业务策略完整保留；所有手动选择组（默认代理、业务分流、VPS 管理与漏网之鱼）都保留直连选项，默认选择不变；这五个线路组（DMIT Pro、DMIT EB、ISIF JP、VIRCS 家宽、AaiTR-Verizon 家宽）在 sing-box 中均为手选 selector，默认 Hy2；不自动测速或切换，线路组不添加直连。Egern 继续使用 auto_test（60 秒间隔、100 ms 容差）。QQPW 家宽已移除。原“美国家宽”改名为“VIRCS家宽”；AI、Palantir 原来默认使用家宽的策略改为“AaiTR-Verizon家宽”，其他业务原默认出口保持不变。
+共享分组采用“业务策略 → 稳定出口 → 协议节点”两级选择结构。业务策略完整保留；所有手动选择组（默认代理、业务分流、VPS 管理与漏网之鱼）都保留直连选项，默认选择不变；这五个线路组（DMIT Pro、DMIT EB、ISIF JP、VIRCS 家宽、AaiTR-Verizon 家宽）在 sing-box 中均为手选 selector，DMIT Pro 默认 Naive，其他线路组默认 Hy2；不自动测速或切换，线路组不添加直连。Egern 继续使用 auto_test（60 秒间隔、100 ms 容差）。QQPW 家宽已移除。原“美国家宽”改名为“VIRCS家宽”；AI、Palantir 原来默认使用家宽的策略改为“AaiTR-Verizon家宽”，其他业务原默认出口保持不变。
 `💬 LINUX DO` 位于 AI 分组下一位，覆盖 `linux.do` 及其子域，默认使用 `🚀 默认代理`。
 美国与亚太 VPS 管理流量使用独立策略组，分别默认经 DMIT Pro 和 ISIF JP 中转，并保留手动直连选项。
 公司新加坡 VPS 使用独立管理策略组，默认直连，可手动切换到 ISIF JP、DMIT Pro 或 DMIT EB。
