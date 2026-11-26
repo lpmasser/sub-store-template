@@ -93,7 +93,12 @@ const householdNodes = [
   '[自建][家宽拼车]Vircs-SS[经DMIT EB Hy2]',
 ]
 const aaitrNodes = proxyTags.filter(tag => tag.includes('AaiTR-Verizon'))
-const dmitProNaive = '[自建]dmitpro-naive'
+const naiveDefaults = {
+  '🇺🇸 DMIT Pro': '[自建]dmitpro-naive',
+  '🇺🇸 DMIT EB': '[自建]dmiteb-naive',
+  '🇯🇵 ISIF JP': '[自建]isifjp-naive',
+}
+const naiveTags = Object.values(naiveDefaults)
 const fixturePin = 'a'.repeat(64)
 const fixtureNodes = proxyTags.map((name, index) => ({
   name, type: name.includes('hy2') || name.includes('Hy2') ? 'hysteria2' : 'vless',
@@ -168,7 +173,7 @@ async function render(target, scriptArguments = {}, extraNodes = []) {
       if (request.platform === 'sing-box') {
         return [
           ...proxyTags.map(tag => ({ tag, type: 'vless' })),
-          { tag: dmitProNaive, type: 'naive' },
+          ...naiveTags.map(tag => ({ tag, type: 'naive' })),
           ...extraNodes.map(node => ({ tag: node.name, type: node.type })),
         ]
       }
@@ -198,7 +203,7 @@ async function render(target, scriptArguments = {}, extraNodes = []) {
 
 function assertDefaults(groups, tagKey, membersKey, defaultKey, directTag) {
   for (const group of groups) {
-    const lineGroup = proxyTags.includes(group[defaultKey]) || group[defaultKey] === dmitProNaive
+    const lineGroup = proxyTags.includes(group[defaultKey]) || naiveTags.includes(group[defaultKey])
     assert.equal(group[membersKey].includes(directTag), !lineGroup, group[tagKey])
     assert.ok(group[defaultKey], `${group[tagKey]} must declare a default`)
     assert.ok(group[membersKey].includes(group[defaultKey]), `${group[tagKey]} default must exist`)
@@ -868,24 +873,27 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   assert.deepEqual(config.rules.at(-1), { default: { policy: '🐟 漏网之鱼' } })
 })
 
-test('uses manual selectors with Naive for DMIT Pro and Hy2 for other sing-box line groups', async () => {
+test('uses manual selectors with Naive for ordinary exits and Hy2 for residential exits in sing-box', async () => {
   const config = await render('sing-box')
   assert.ok(!config.outbounds.some(node => node.type === 'urltest'))
-  for (const tag of ['🇺🇸 DMIT Pro', '🇺🇸 DMIT EB', '🇯🇵 ISIF JP', '🏠 VIRCS家宽', '🏠 AaiTR-Verizon家宽']) {
+  for (const tag of [...Object.keys(naiveDefaults), '🏠 VIRCS家宽', '🏠 AaiTR-Verizon家宽']) {
     const node = config.outbounds.find(item => item.tag === tag)
     assert.equal(node.type, 'selector')
     assert.equal(node.default, node.outbounds[0])
-    if (tag === '🇺🇸 DMIT Pro') {
-      assert.equal(node.default, dmitProNaive)
-      assert.ok(node.outbounds.includes('[自建]dmitpro-hy2[美国.LAX]'))
-    } else {
-      assert.match(node.default, /hy2/i)
-    }
-    assert.ok(node.outbounds.every(member => proxyTags.includes(member) || member === dmitProNaive))
+    if (naiveDefaults[tag]) assert.equal(node.default, naiveDefaults[tag])
+    else assert.match(node.default, /hy2/i)
+    assert.ok(node.outbounds.some(member => /hy2/i.test(member)))
+    assert.ok(node.outbounds.every(member => proxyTags.includes(member) || member === naiveDefaults[tag]))
   }
   assert.ok(!JSON.stringify(config).includes('QQPW'))
   const egern = await render('egern')
-  assert.equal(egern.policy_groups.find(group => group.auto_test?.name === '🇺🇸 DMIT Pro').auto_test.policies[0], '[自建]dmitpro-hy2[美国.LAX]')
+  for (const [tag, hy2] of [
+    ['🇺🇸 DMIT Pro', '[自建]dmitpro-hy2[美国.LAX]'],
+    ['🇺🇸 DMIT EB', '[自建]dmiteb-hy2'],
+    ['🇯🇵 ISIF JP', '[自建]isifjp-hy2'],
+  ]) {
+    assert.equal(egern.policy_groups.find(group => group.auto_test?.name === tag).auto_test.policies[0], hy2)
+  }
   for (const proxy of egern.proxies.filter(node => node.hysteria2?.name.includes('Hy2'))) {
     assert.equal(proxy.hysteria2.fingerprint_sha256, fixturePin)
     assert.ok(!Object.hasOwn(proxy.hysteria2, 'skip_tls_verify'))

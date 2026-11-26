@@ -31,7 +31,7 @@ sing-box 渲染器另有可选参数 `workAccessFile` 和 `intranet`。`workAcce
 
 Egern 的 `auto_update.url` 由线上 SubStore File 的私有 Script Operator 参数 `autoUpdateUrl` 注入；本公开仓库只保存注入逻辑和测试占位值，不保存实际分享 URL。
 
-共享分组采用“业务策略 → 稳定出口 → 协议节点”两级选择结构。业务策略完整保留；所有手动选择组（默认代理、业务分流、VPS 管理与漏网之鱼）都保留直连选项，默认选择不变；这五个线路组（DMIT Pro、DMIT EB、ISIF JP、VIRCS 家宽、AaiTR-Verizon 家宽）在 sing-box 中均为手选 selector，DMIT Pro 默认 Naive，其他线路组默认 Hy2；不自动测速或切换，线路组不添加直连。Egern 继续使用 auto_test（60 秒间隔、100 ms 容差）。QQPW 家宽已移除。原“美国家宽”改名为“VIRCS家宽”；Palantir 和 Egern 的 AI 策略默认使用“AaiTR-Verizon家宽”。
+共享分组采用“业务策略 → 稳定出口 → 协议节点”两级选择结构。业务策略完整保留；所有手动选择组（默认代理、业务分流、VPS 管理与漏网之鱼）都保留直连选项，默认选择不变；这五个线路组（DMIT Pro、DMIT EB、ISIF JP、VIRCS 家宽、AaiTR-Verizon 家宽）在 sing-box 中均为手选 selector，DMIT Pro、DMIT EB 和 ISIF JP 默认 Naive，家宽线路组默认 Hy2；不自动测速或切换，线路组不添加直连。Egern 继续使用 auto_test（60 秒间隔、100 ms 容差）。QQPW 家宽已移除。原“美国家宽”改名为“VIRCS家宽”；Palantir 和 Egern 的 AI 策略默认使用“AaiTR-Verizon家宽”。
 `💬 LINUX DO` 位于 AI 分组下一位，覆盖 `linux.do` 及其子域，默认使用 `🚀 默认代理`。
 
 `🏠 AaITR-Verizo自建` 在 sing-box 中提供经 DMIT Pro／EB 的 VLESS、Hy2 和 Naive，组内默认 DMIT Pro Hy2。AI 策略默认选择该分组，其他含拼车家宽选项的业务组可手动选择。策略的 `singBoxGroups` 声明这些线路，`singBoxMembers` 将它们加入对应的业务组。
