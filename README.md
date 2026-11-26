@@ -34,11 +34,11 @@ Egern 的 `auto_update.url` 由线上 SubStore File 的私有 Script Operator �
 共享分组采用“业务策略 → 稳定出口 → 协议节点”两级选择结构。业务策略完整保留；所有手动选择组（默认代理、业务分流、VPS 管理与漏网之鱼）都保留直连选项，默认选择不变；这五个线路组（DMIT Pro、DMIT EB、ISIF JP、VIRCS 家宽、AaiTR-Verizon 家宽）在 sing-box 中均为手选 selector，DMIT Pro、DMIT EB 和 ISIF JP 默认 Naive，家宽线路组默认 Hy2；不自动测速或切换，线路组不添加直连。Egern 继续使用 auto_test（60 秒间隔、100 ms 容差）。QQPW 家宽已移除。原“美国家宽”改名为“VIRCS家宽”；Palantir 和 Egern 的 AI 策略默认使用“AaiTR-Verizon家宽”。
 `💬 LINUX DO` 位于 AI 分组下一位，覆盖 `linux.do` 及其子域，默认使用 `🚀 默认代理`。
 
-`🏠 AaITR-Verizo自建` 在 sing-box 中提供经 DMIT Pro／EB 的 VLESS、Hy2 和 Naive，组内默认 DMIT Pro Hy2。AI 策略默认选择该分组，其他含拼车家宽选项的业务组可手动选择。策略的 `singBoxGroups` 声明这些线路，`singBoxMembers` 将它们加入对应的业务组。
+`🏠 AaITR-Verizo自建` 是 sing-box 中 AI 策略的默认线路。传入私有 File 参数 `residentialFile` 后，VIRCS、AaiTR-Verizon 和自建家宽分组使用该文件提供的链式出站。文件是以策略组名称为键、Shadowsocks 出站数组为值的对象。数组顺序决定组内默认，出站的 `detour` 指向普通线路组。凭据由调用方在私有 File 中提供。
 美国与亚太 VPS 管理流量使用独立策略组，分别默认经 DMIT Pro 和 ISIF JP 中转，并保留手动直连选项。
 公司新加坡 VPS 使用独立管理策略组，默认直连，可手动切换到 ISIF JP、DMIT Pro 或 DMIT EB。
 
-所有客户端节点都来自同一个 SubStore Collection。Egern 输出使用原生 `proxies`、`policy_groups` 和 `rules`，不套用 Clash 配置。两种家宽的 DMIT Pro 与 DMIT EB 路径都由对应 Host 在服务端转发，每条路径同时提供原 VLESS 和新增 Hy2 入口，模板不生成客户端链式代理。Hy2 的端口范围及证书 pin 归节点输入；sing-box 移除转换器多余的单端口字段，Egern 显式保留原始节点的证书 SHA-256 pin，避免 SubStore 原生 Egern 转换丢失它。
+普通节点和旧家宽中转入口来自同一个 SubStore Collection。Egern 输出使用原生 `proxies`、`policy_groups` 和 `rules`，家宽由 DMIT 服务端转发。Hy2 的端口范围及证书 pin 归节点输入。sing-box 移除转换器多余的单端口字段，Egern 显式保留原始节点的证书 SHA-256 pin。
 
 sing-box 客户端保留 IPv4/IPv6 双栈 TUN，并按物理默认接口是否具有 `2000::/3` 地址处理本地解析范围：无公网 IPv6 时，AAAA/HTTPS 返回空的 `NOERROR` 响应，规则模式下来自 TUN 的国内字面量 IPv6 在 sniff 前快速拒绝；direct/global 模式保持原语义。`default_interface_address` 反映平台报告的默认接口，源码不保证自动排除 TUN；目前只能确认 SFM 的 direct dial 绑定 `en0`，真 IPv6 网络恢复行为仍需在 macOS 客户端实测。该处理基于已确认存在绕过系统 DNS 的字面量 IPv6，不把具体应用调用链写成确定根因。
 

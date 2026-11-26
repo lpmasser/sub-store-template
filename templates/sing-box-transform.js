@@ -31,27 +31,64 @@ const proxies = await produceArtifact({
 for (const proxy of proxies) {
   if (proxy.type === 'hysteria2' && proxy.server_ports?.length) delete proxy.server_port
 }
+const chains = $arguments.residentialFile
+  ? loadResidentialChains(
+    JSON.parse(await produceArtifact({ name: $arguments.residentialFile, type: 'file' })),
+    policy,
+    proxies,
+  )
+  : new Map()
+proxies.push(...Array.from(chains.values()).flat())
 const proxyTags = proxies.map(proxy => proxy.tag)
-const groups = buildGroups(policy, proxyTags)
+const groups = buildGroups(policy, proxyTags, chains)
 
 $content = JSON.stringify(renderConfig(template, policy, proxies, groups, workAccess, intranet), null, 2)
 
-function buildGroups(candidate, nodes) {
+function loadResidentialChains(document, candidate, proxies) {
+  if (!document || typeof document !== 'object' || Array.isArray(document)) {
+    throw new Error('家宽链式出站配置无效')
+  }
+  const chains = new Map(Object.entries(document))
+  const lineGroups = [...candidate.groups, ...(candidate.singBoxGroups || [])]
+    .filter(group => group.match)
+  const lineTags = new Set(lineGroups.map(group => group.tag))
+  const tags = new Set([...proxies.map(proxy => proxy.tag), ...lineTags, candidate.singBoxDirectTag])
+
+  for (const [group, outbounds] of chains) {
+    if (!lineTags.has(group) || !Array.isArray(outbounds) || outbounds.length === 0) {
+      throw new Error('家宽链式出站引用了无效的分组')
+    }
+    for (const outbound of outbounds) {
+      if (outbound?.type !== 'shadowsocks' || !outbound.tag || tags.has(outbound.tag) ||
+          !lineTags.has(outbound.detour) || chains.has(outbound.detour)) {
+        throw new Error(`策略组 ${group} 的家宽链式出站无效`)
+      }
+      tags.add(outbound.tag)
+    }
+  }
+  return chains
+}
+
+function buildGroups(candidate, nodes, chains) {
   const singBoxGroups = (candidate.singBoxGroups || []).filter(
-    group => matchNodes(candidate.patterns[group.match], nodes).length > 0,
+    group => chains.has(group.tag) || matchNodes(candidate.patterns[group.match], nodes).length > 0,
   )
   const singBoxTags = new Set(singBoxGroups.map(group => group.tag))
-  const groups = [...candidate.groups, ...singBoxGroups].map(group => ({
-    ...group,
-    default: group.singBoxMembers?.includes(group.singBoxDefault) && !singBoxTags.has(group.singBoxDefault)
-      ? group.default
-      : group.singBoxDefault ?? group.default,
-    members: unique([
-      ...(group.members || []),
-      ...(group.singBoxMembers || []).filter(member => singBoxTags.has(member)),
-      ...matchNodes(candidate.patterns[group.match], nodes),
-    ]),
-  }))
+  const groups = [...candidate.groups, ...singBoxGroups].map(group => {
+    const chain = chains.get(group.tag)
+    if (chain) return { ...group, default: chain[0].tag, members: chain.map(outbound => outbound.tag) }
+    return {
+      ...group,
+      default: group.singBoxMembers?.includes(group.singBoxDefault) && !singBoxTags.has(group.singBoxDefault)
+        ? group.default
+        : group.singBoxDefault ?? group.default,
+      members: unique([
+        ...(group.members || []),
+        ...(group.singBoxMembers || []).filter(member => singBoxTags.has(member)),
+        ...matchNodes(candidate.patterns[group.match], nodes),
+      ]),
+    }
+  })
   const available = new Set([...nodes, candidate.directPolicy, ...groups.map(group => group.tag)])
 
   for (const group of groups) {

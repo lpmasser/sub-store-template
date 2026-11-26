@@ -99,6 +99,17 @@ const naiveDefaults = {
   '🇯🇵 ISIF JP': '[自建]isifjp-naive',
 }
 const naiveTags = Object.values(naiveDefaults)
+const residentialChains = Object.fromEntries(
+  ['🏠 VIRCS家宽', '🏠 AaiTR-Verizon家宽', '🏠 AaITR-Verizo自建'].map(group => [
+    group,
+    ['Pro', 'EB'].map(relay => ({
+      tag: `${group} · 经DMIT ${relay}`,
+      detour: `🇺🇸 DMIT ${relay}`,
+      type: 'shadowsocks', server: 'residential.example.net', server_port: 12345,
+      method: 'aes-128-gcm', password: 'test-only', network: 'tcp',
+    })),
+  ]),
+)
 const fixturePin = 'a'.repeat(64)
 const fixtureNodes = proxyTags.map((name, index) => ({
   name, type: name.includes('hy2') || name.includes('Hy2') ? 'hysteria2' : 'vless',
@@ -166,6 +177,9 @@ async function render(target, scriptArguments = {}, extraNodes = []) {
       }
       if (request.type === 'file' && request.name === 'work-access') {
         return JSON.stringify(workAccessFixture)
+      }
+      if (request.type === 'file' && request.name === 'residential-chains') {
+        return JSON.stringify(residentialChains)
       }
       if (request.type !== 'collection' || request.name !== policy.collection) {
         throw new Error(`unexpected artifact request: ${JSON.stringify(request)}`)
@@ -797,6 +811,25 @@ test('adds the self-hosted residential relays and choices only to sing-box', asy
     assert.equal(updated.outbounds.includes(tag), group.outbounds.includes('🏠 AaiTR-Verizon家宽'))
   }
   assert.deepEqual(await render('egern', {}, extraNodes), await render('egern'))
+})
+
+test('uses private chained outbounds for all three sing-box residential selectors', async () => {
+  const args = { residentialFile: 'residential-chains' }
+  const config = await render('sing-box', args)
+  const byTag = new Map(config.outbounds.map(outbound => [outbound.tag, outbound]))
+
+  for (const [group, chains] of Object.entries(residentialChains)) {
+    assert.deepEqual(byTag.get(group), {
+      tag: group, type: 'selector', default: chains[0].tag, outbounds: chains.map(chain => chain.tag),
+    })
+    for (const chain of chains) {
+      assert.deepEqual(byTag.get(chain.tag), chain)
+      assert.equal(byTag.get(chain.detour).default, naiveDefaults[chain.detour])
+    }
+  }
+  assert.equal(byTag.get('🧠 AI').default, '🏠 AaITR-Verizo自建')
+  assert.ok([...householdNodes, ...aaitrNodes].every(tag => byTag.has(tag)))
+  assert.deepEqual(await render('egern', args), await render('egern'))
 })
 
 test('renders a native Egern profile with matching groups and remote rule sets', async () => {
