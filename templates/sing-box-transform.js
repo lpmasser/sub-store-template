@@ -37,11 +37,16 @@ const groups = buildGroups(policy, proxyTags)
 $content = JSON.stringify(renderConfig(template, policy, proxies, groups, workAccess, intranet), null, 2)
 
 function buildGroups(candidate, nodes) {
-  const groups = candidate.groups.map(group => ({
+  const singBoxGroups = (candidate.singBoxGroups || []).filter(
+    group => matchNodes(candidate.patterns[group.match], nodes).length > 0,
+  )
+  const singBoxTags = new Set(singBoxGroups.map(group => group.tag))
+  const groups = [...candidate.groups, ...singBoxGroups].map(group => ({
     ...group,
     default: group.singBoxDefault ?? group.default,
     members: unique([
       ...(group.members || []),
+      ...(group.singBoxMembers || []).filter(member => singBoxTags.has(member)),
       ...matchNodes(candidate.patterns[group.match], nodes),
     ]),
   }))

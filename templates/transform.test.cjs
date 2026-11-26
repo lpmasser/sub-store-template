@@ -145,7 +145,7 @@ const egernRuleFields = new Set([
   'ip_cidr6_set',
 ])
 
-async function render(target, scriptArguments = {}) {
+async function render(target, scriptArguments = {}, extraNodes = []) {
   const execute = new AsyncFunction(
     '$files',
     'produceArtifact',
@@ -166,9 +166,13 @@ async function render(target, scriptArguments = {}) {
         throw new Error(`unexpected artifact request: ${JSON.stringify(request)}`)
       }
       if (request.platform === 'sing-box') {
-        return [...proxyTags.map(tag => ({ tag, type: 'vless' })), { tag: dmitProNaive, type: 'naive' }]
+        return [
+          ...proxyTags.map(tag => ({ tag, type: 'vless' })),
+          { tag: dmitProNaive, type: 'naive' },
+          ...extraNodes.map(node => ({ tag: node.name, type: node.type })),
+        ]
       }
-      if (request.platform === 'JSON') return structuredClone(fixtureNodes)
+      if (request.platform === 'JSON') return structuredClone([...fixtureNodes, ...extraNodes])
       throw new Error(`unexpected platform: ${request.platform}`)
     },
     {
@@ -765,6 +769,28 @@ test('keeps Egern output independent of work access arguments', async () => {
   const baseline = await render('egern')
   assert.deepEqual(await render('egern', intranetArgs), baseline)
   assert.ok(!JSON.stringify(baseline).includes('公司远程出口'))
+})
+
+test('adds the self-hosted residential relays and choices only to sing-box', async () => {
+  const extraNodes = ['Pro', 'EB'].flatMap(host =>
+    [['Hy2', 'hysteria2'], ['VLESS', 'vless'], ['Naive', 'naive']].map(([label, type]) => ({
+      name: `[自建][自建家宽]经DMIT ${host} ${label}`, type,
+    })),
+  )
+  const tag = '🏠 自建家宽'
+  const config = await render('sing-box', {}, extraNodes)
+  const baseline = await render('sing-box')
+  const byTag = new Map(config.outbounds.map(outbound => [outbound.tag, outbound]))
+  const names = extraNodes.map(node => node.name)
+
+  assert.deepEqual(byTag.get(tag), { tag, type: 'selector', outbounds: names, default: names[0] })
+  assert.ok(!baseline.outbounds.some(outbound => outbound.tag === tag || outbound.outbounds?.includes(tag)))
+  for (const group of baseline.outbounds.filter(outbound => outbound.type === 'selector')) {
+    const updated = byTag.get(group.tag)
+    assert.equal(updated.default, group.default)
+    assert.equal(updated.outbounds.includes(tag), group.outbounds.includes('🏠 AaiTR-Verizon家宽'))
+  }
+  assert.deepEqual(await render('egern', {}, extraNodes), await render('egern'))
 })
 
 test('renders a native Egern profile with matching groups and remote rule sets', async () => {

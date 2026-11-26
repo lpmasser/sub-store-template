@@ -9,12 +9,17 @@ const policy = JSON.parse(await produceArtifact({
   name: 'routing-policy',
   type: 'file',
 }))
-const sourceNodes = await produceArtifact({
+const collectionNodes = await produceArtifact({
   name: policy.collection,
   type: 'collection',
   platform: 'JSON',
   produceType: 'internal',
 })
+const names = collectionNodes.map(node => node.name)
+const singBoxOnlyNodes = new Set((policy.singBoxGroups || []).flatMap(
+  group => matchNodes(policy.patterns[group.match], names),
+))
+const sourceNodes = collectionNodes.filter(node => !singBoxOnlyNodes.has(node.name))
 const output = ProxyUtils.produce(sourceNodes, 'Egern', { prettyYaml: true })
 const proxies = ProxyUtils.yaml.safeLoad(output).proxies || []
 // SubStore's Egern producer drops the leaf certificate pin.
