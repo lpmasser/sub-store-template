@@ -93,20 +93,23 @@ const householdNodes = [
   '[自建][家宽拼车]Vircs-SS[经DMIT EB Hy2]',
 ]
 const aaitrNodes = proxyTags.filter(tag => tag.includes('AaiTR-Verizon'))
-const naiveDefaults = {
-  '🇺🇸 DMIT Pro': '[自建]dmitpro-naive',
-  '🇺🇸 DMIT EB': '[自建]dmiteb-naive',
-  '🇯🇵 ISIF JP': '[自建]isifjp-naive',
+const vlessDefaults = {
+  '🇺🇸 DMIT Pro': '[自建]dmitpro-vless[美国.LAX]',
+  '🇺🇸 DMIT EB': '[自建]dmiteb-vless',
+  '🇯🇵 ISIF JP': '[自建]isifjp-vless',
 }
-const naiveTags = Object.values(naiveDefaults)
+const naiveTags = ['[自建]dmitpro-naive', '[自建]dmiteb-naive', '[自建]isifjp-naive']
 const residentialChains = Object.fromEntries(
   ['🏠 VIRCS家宽', '🏠 AaiTR-Verizon家宽', '🏠 AaITR-Verizo自建'].map(group => [
     group,
     ['Pro', 'EB'].map(relay => ({
-      tag: `${group} · 经DMIT ${relay}`,
+      tag: `经 DMIT ${relay} · ${group.replace(/^🏠 /, '')}`,
       detour: `🇺🇸 DMIT ${relay}`,
       type: 'shadowsocks', server: 'residential.example.net', server_port: 12345,
       method: 'aes-128-gcm', password: 'test-only', network: 'tcp',
+      ...(group === '🏠 AaiTR-Verizon家宽' ? {
+        plugin: 'obfs-local', plugin_opts: 'obfs=tls;obfs-host=test.example.net',
+      } : {}),
     })),
   ]),
 )
@@ -824,12 +827,40 @@ test('uses private chained outbounds for all three sing-box residential selector
     })
     for (const chain of chains) {
       assert.deepEqual(byTag.get(chain.tag), chain)
-      assert.equal(byTag.get(chain.detour).default, naiveDefaults[chain.detour])
+      assert.equal(byTag.get(chain.detour).default, vlessDefaults[chain.detour])
     }
   }
   assert.equal(byTag.get('🧠 AI').default, '🏠 AaITR-Verizo自建')
   assert.ok([...householdNodes, ...aaitrNodes].every(tag => byTag.has(tag)))
-  assert.deepEqual(await render('egern', args), await render('egern'))
+})
+
+test('renders native Egern residential chains with concrete VLESS first hops', async () => {
+  const config = await render('egern', { residentialFile: 'residential-chains' })
+  const byName = new Map(config.proxies.map(item => {
+    const proxy = Object.values(item)[0]
+    return [proxy.name, item]
+  }))
+  const groups = new Map(config.policy_groups.map(item => {
+    const group = Object.values(item)[0]
+    return [group.name, group]
+  }))
+  for (const [name, chains] of Object.entries(residentialChains)) {
+    assert.deepEqual(groups.get(name).policies, chains.map(chain => chain.tag))
+    for (const chain of chains) {
+      const proxy = byName.get(chain.tag).shadowsocks
+      assert.deepEqual(proxy, {
+        name: chain.tag, method: chain.method, password: chain.password,
+        server: chain.server, port: chain.server_port, udp_relay: false,
+        prev_hop: vlessDefaults[chain.detour],
+        ...(chain.plugin ? { obfs: 'tls', obfs_host: 'test.example.net' } : {}),
+      })
+      assert.ok(byName.get(proxy.prev_hop).vless)
+    }
+  }
+  const ai = groups.get('🧠 AI')
+  assert.equal(ai.policies[0], '🏠 AaiTR-Verizon家宽')
+  assert.ok(ai.policies.includes('🏠 AaITR-Verizo自建'))
+  assert.ok([...householdNodes, ...aaitrNodes].every(tag => byName.has(tag)))
 })
 
 test('renders a native Egern profile with matching groups and remote rule sets', async () => {
@@ -845,16 +876,13 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   assert.ok(config.proxies.every(proxy => Object.values(proxy)[0].name))
   assert.ok(config.proxies.every(proxy => !Object.hasOwn(Object.values(proxy)[0], 'prev_hop')))
   assert.equal(groups.length, 25)
-  assert.equal(config.policy_groups.filter(group => group.auto_test).length, 5)
+  assert.equal(config.policy_groups.filter(group => group.auto_test).length, 2)
   for (const entry of config.policy_groups) {
     const [type, group] = Object.entries(entry)[0]
-    if (type === 'auto_test') {
-      assert.ok(!group.policies.includes('DIRECT'), `${group.name} 自动测速组不得包含直连`)
-    } else {
-      assert.ok(group.policies.includes('DIRECT'), `${group.name} 手动选择组必须包含直连`)
-    }
+    const lineGroup = type === 'auto_test' || Object.hasOwn(vlessDefaults, group.name)
+    assert.equal(group.policies.includes('DIRECT'), !lineGroup, group.name)
   }
-  assert.ok(config.policy_groups.find(group => group.auto_test?.name === '🇯🇵 ISIF JP'))
+  assert.ok(config.policy_groups.find(group => group.select?.name === '🇯🇵 ISIF JP'))
   assertManagementOrder(groups, 'name')
   assert.equal(groups.find(group => group.name === '🚀 默认代理').policies[0], '🇺🇸 DMIT Pro')
   assert.equal(groups.find(group => group.name === '🧠 AI').policies[0], '🏠 AaiTR-Verizon家宽')
@@ -906,26 +934,22 @@ test('renders a native Egern profile with matching groups and remote rule sets',
   assert.deepEqual(config.rules.at(-1), { default: { policy: '🐟 漏网之鱼' } })
 })
 
-test('uses manual selectors with Naive for ordinary exits and Hy2 for residential exits in sing-box', async () => {
+test('defaults all three ordinary line selectors to VLESS in both clients', async () => {
   const config = await render('sing-box')
   assert.ok(!config.outbounds.some(node => node.type === 'urltest'))
-  for (const tag of [...Object.keys(naiveDefaults), '🏠 VIRCS家宽', '🏠 AaiTR-Verizon家宽']) {
+  for (const tag of [...Object.keys(vlessDefaults), '🏠 VIRCS家宽', '🏠 AaiTR-Verizon家宽']) {
     const node = config.outbounds.find(item => item.tag === tag)
     assert.equal(node.type, 'selector')
     assert.equal(node.default, node.outbounds[0])
-    if (naiveDefaults[tag]) assert.equal(node.default, naiveDefaults[tag])
+    if (vlessDefaults[tag]) assert.equal(node.default, vlessDefaults[tag])
     else assert.match(node.default, /hy2/i)
     assert.ok(node.outbounds.some(member => /hy2/i.test(member)))
-    assert.ok(node.outbounds.every(member => proxyTags.includes(member) || member === naiveDefaults[tag]))
+    assert.ok(node.outbounds.every(member => proxyTags.includes(member) || naiveTags.includes(member)))
   }
   assert.ok(!JSON.stringify(config).includes('QQPW'))
   const egern = await render('egern')
-  for (const [tag, hy2] of [
-    ['🇺🇸 DMIT Pro', '[自建]dmitpro-hy2[美国.LAX]'],
-    ['🇺🇸 DMIT EB', '[自建]dmiteb-hy2'],
-    ['🇯🇵 ISIF JP', '[自建]isifjp-hy2'],
-  ]) {
-    assert.equal(egern.policy_groups.find(group => group.auto_test?.name === tag).auto_test.policies[0], hy2)
+  for (const [tag, vless] of Object.entries(vlessDefaults)) {
+    assert.equal(egern.policy_groups.find(group => group.select?.name === tag).select.policies[0], vless)
   }
   for (const proxy of egern.proxies.filter(node => node.hysteria2?.name.includes('Hy2'))) {
     assert.equal(proxy.hysteria2.fingerprint_sha256, fixturePin)

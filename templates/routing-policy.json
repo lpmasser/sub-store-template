@@ -36,9 +36,9 @@
     {"tag": "VPS管理-亚太", "members": ["🇯🇵 ISIF JP", "DIRECT", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB"], "default": "🇯🇵 ISIF JP"},
     {"tag": "VPS管理-公司新加坡", "members": ["DIRECT", "🇯🇵 ISIF JP", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB"], "default": "DIRECT"},
     {"tag": "🐟 漏网之鱼", "members": ["🚀 默认代理", "🇺🇸 DMIT Pro", "🇺🇸 DMIT EB", "🇯🇵 ISIF JP", "🏠 AaiTR-Verizon家宽", "🏠 VIRCS家宽", "DIRECT"], "singBoxMembers": ["🏠 AaITR-Verizo自建"], "default": "🚀 默认代理"},
-    {"tag": "🇺🇸 DMIT Pro", "type": "auto", "match": "dmitpro", "default": "[自建]dmitpro-hy2[美国.LAX]", "singBoxDefault": "[自建]dmitpro-naive"},
-    {"tag": "🇺🇸 DMIT EB", "type": "auto", "match": "dmiteb", "default": "[自建]dmiteb-hy2", "singBoxDefault": "[自建]dmiteb-naive"},
-    {"tag": "🇯🇵 ISIF JP", "type": "auto", "match": "isifjp", "default": "[自建]isifjp-hy2", "singBoxDefault": "[自建]isifjp-naive"},
+    {"tag": "🇺🇸 DMIT Pro", "match": "dmitpro", "default": "[自建]dmitpro-vless[美国.LAX]"},
+    {"tag": "🇺🇸 DMIT EB", "match": "dmiteb", "default": "[自建]dmiteb-vless"},
+    {"tag": "🇯🇵 ISIF JP", "match": "isifjp", "default": "[自建]isifjp-vless"},
     {"tag": "🏠 VIRCS家宽", "type": "auto", "match": "vircsHome", "default": "[自建][家宽拼车]Vircs-SS[经DMIT Pro Hy2]"},
     {"tag": "🏠 AaiTR-Verizon家宽", "type": "auto", "match": "aaitrHome", "default": "[自建][家宽拼车]AaiTR-Verizon[经DMIT Pro Hy2]"}
   ],

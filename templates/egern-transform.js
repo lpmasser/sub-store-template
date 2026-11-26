@@ -31,8 +31,16 @@ for (const proxy of proxies) {
     delete proxy.hysteria2.skip_tls_verify
   }
 }
+const chains = $arguments.residentialFile
+  ? buildResidentialChains(
+    JSON.parse(await produceArtifact({ name: $arguments.residentialFile, type: 'file' })),
+    policy,
+    proxies,
+  )
+  : new Map()
+proxies.push(...Array.from(chains.values()).flat())
 const proxyTags = proxies.map(getProxyName)
-const groups = buildGroups(policy, proxyTags)
+const groups = buildGroups(policy, proxyTags, chains)
 
 $content = ProxyUtils.yaml.safeDump(renderConfig(template, policy, proxies, groups), {
   lineWidth: -1,
@@ -44,14 +52,72 @@ function getProxyName(proxy) {
   return definition.name
 }
 
-function buildGroups(candidate, nodes) {
-  const groups = candidate.groups.map(group => ({
-    ...group,
-    members: unique([
-      ...(group.members || []),
-      ...matchNodes(candidate.patterns[group.match], nodes),
-    ]),
+function buildResidentialChains(document, candidate, proxies) {
+  const byName = new Map(proxies.map(proxy => [getProxyName(proxy), proxy]))
+  const lineGroups = new Map(candidate.groups.filter(group => group.match).map(group => [group.tag, group]))
+  const allowedGroups = new Set([...lineGroups.keys(), ...(candidate.singBoxGroups || []).map(group => group.tag)])
+  const chains = new Map()
+  for (const [group, outbounds] of Object.entries(document)) {
+    if (!allowedGroups.has(group) || !Array.isArray(outbounds) || !outbounds.length) {
+      throw new Error('Egern 家宽链式分组无效')
+    }
+    chains.set(group, outbounds.map(outbound => {
+      const upstream = lineGroups.get(outbound?.detour)?.default
+      if (outbound?.type !== 'shadowsocks' || !outbound.tag || byName.has(outbound.tag) ||
+          !byName.get(upstream)?.vless) {
+        throw new Error(`Egern 家宽链式分组 ${group} 的代理或 VLESS 前置无效`)
+      }
+      const shadowsocks = {
+        name: outbound.tag,
+        method: outbound.method,
+        password: outbound.password,
+        server: outbound.server,
+        port: outbound.server_port,
+        udp_relay: outbound.network !== 'tcp',
+        prev_hop: upstream,
+      }
+      if (outbound.plugin) Object.assign(shadowsocks, egernObfs(outbound, group))
+      const proxy = { shadowsocks }
+      byName.set(outbound.tag, proxy)
+      return proxy
+    }))
+  }
+  return chains
+}
+
+function egernObfs(outbound, group) {
+  if (outbound.plugin !== 'obfs-local') throw new Error(`Egern 家宽链式分组 ${group} 的混淆插件无效`)
+  const options = Object.fromEntries((outbound.plugin_opts || '').split(';').filter(option => option.includes('=')).map(option => {
+    const separator = option.indexOf('=')
+    return [option.slice(0, separator), option.slice(separator + 1)]
   }))
+  if (options.obfs !== 'http' && options.obfs !== 'tls') {
+    throw new Error(`Egern 家宽链式分组 ${group} 的混淆模式无效`)
+  }
+  return {
+    obfs: options.obfs,
+    ...(options['obfs-host'] ? { obfs_host: options['obfs-host'] } : {}),
+    ...(options['obfs-uri'] ? { obfs_uri: options['obfs-uri'] } : {}),
+  }
+}
+
+function buildGroups(candidate, nodes, chains) {
+  const extraGroups = (candidate.singBoxGroups || []).filter(group => chains.has(group.tag))
+  const groups = [...candidate.groups, ...extraGroups].map(group => {
+    const chain = chains.get(group.tag)
+    if (chain) {
+      const members = chain.map(getProxyName)
+      return { ...group, members, default: members[0] }
+    }
+    return {
+      ...group,
+      members: unique([
+        ...(group.members || []),
+        ...(group.singBoxMembers || []).filter(member => chains.has(member)),
+        ...matchNodes(candidate.patterns[group.match], nodes),
+      ]),
+    }
+  })
   const available = new Set([...nodes, candidate.directPolicy, ...groups.map(group => group.tag)])
 
   for (const group of groups) {
