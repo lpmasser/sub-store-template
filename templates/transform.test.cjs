@@ -777,7 +777,7 @@ test('adds the self-hosted residential relays and choices only to sing-box', asy
       name: `[自建][自建家宽]经DMIT ${host} ${label}`, type,
     })),
   )
-  const tag = '🏠 自建家宽'
+  const tag = '🏠 AaITR-Verizo自建'
   const config = await render('sing-box', {}, extraNodes)
   const baseline = await render('sing-box')
   const byTag = new Map(config.outbounds.map(outbound => [outbound.tag, outbound]))
@@ -785,9 +785,10 @@ test('adds the self-hosted residential relays and choices only to sing-box', asy
 
   assert.deepEqual(byTag.get(tag), { tag, type: 'selector', outbounds: names, default: names[0] })
   assert.ok(!baseline.outbounds.some(outbound => outbound.tag === tag || outbound.outbounds?.includes(tag)))
+  assert.equal(byTag.get('🧠 AI').outbounds[0], tag)
   for (const group of baseline.outbounds.filter(outbound => outbound.type === 'selector')) {
     const updated = byTag.get(group.tag)
-    assert.equal(updated.default, group.default)
+    assert.equal(updated.default, group.tag === '🧠 AI' ? tag : group.default)
     assert.equal(updated.outbounds.includes(tag), group.outbounds.includes('🏠 AaiTR-Verizon家宽'))
   }
   assert.deepEqual(await render('egern', {}, extraNodes), await render('egern'))

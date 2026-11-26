@@ -43,7 +43,9 @@ function buildGroups(candidate, nodes) {
   const singBoxTags = new Set(singBoxGroups.map(group => group.tag))
   const groups = [...candidate.groups, ...singBoxGroups].map(group => ({
     ...group,
-    default: group.singBoxDefault ?? group.default,
+    default: group.singBoxMembers?.includes(group.singBoxDefault) && !singBoxTags.has(group.singBoxDefault)
+      ? group.default
+      : group.singBoxDefault ?? group.default,
     members: unique([
       ...(group.members || []),
       ...(group.singBoxMembers || []).filter(member => singBoxTags.has(member)),
