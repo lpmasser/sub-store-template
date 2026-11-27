@@ -1,6 +1,7 @@
 # Generated file. Do not edit.
 # Source: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/microsoft.srs
 domain_set:
+  - "aurora-customization-usw2.lithium.com"
   - "az764295.vo.msecnd.net"
   - "azure.microsoft.com"
   - "azuremarketplace.microsoft.com"
